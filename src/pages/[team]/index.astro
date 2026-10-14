@@ -1,0 +1,67 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import MatchCard from '@/components/MatchCard.astro';
+import LeaguePreview from '@/components/LeaguePreview.astro';
+import SponsorStrip from '@/components/SponsorStrip.astro';
+import SectionHeading from '@/components/SectionHeading.astro';
+import EmptyState from '@/components/EmptyState.astro';
+import { TEAM_IDS, linkFor, sectionHref, teams, type TeamId } from '@/data/teams';
+
+export function getStaticPaths() {
+  return TEAM_IDS.map((team) => ({ params: { team } }));
+}
+
+const teamId = Astro.params.team as TeamId;
+const team = teams[teamId];
+const shared = (path: string, hash?: string) => linkFor(teamId, { shared: path, hash });
+const hasSquad = team.players.length > 0;
+---
+
+<BaseLayout team={teamId} section="home" title={`${team.name} | Bridlington Town AFC | Official Website`} description={`The official home of Bridlington Town AFC's ${team.phrase} — fixtures, results, news, squad and club information.`}>
+  <section class="home-hero dark-surface">
+    <div class="photo-stage" role="img" aria-label={`Official Bridlington Town AFC ${team.phrase} or matchday photograph will be added here`}><span>Official team photography coming next</span></div>
+    <div class="hero-shade"></div>
+    <div class="shell hero-content">
+      <img class="hero-badge" src="/assets/brand/brid-town-badge-black.png" alt="Bridlington Town AFC badge" width="1323" height="1189" />
+      <div><p class="eyebrow light">Bridlington Town AFC · {team.name}</p><h1>Our town.<br /><span>Our team.</span></h1><p class="hero-copy">{team.home.introduction}</p><div class="hero-actions"><a class="button" href={sectionHref(teamId, 'matches')}>Match Centre</a><a class="button outline" href={shared('/commercial/')}>Partner with Brid Town</a></div></div>
+    </div>
+  </section>
+
+  <section class="match-centre dark-surface" aria-label={`Latest ${team.phrase} match information`}>
+    {team.matches.hasMatchCentre
+      ? <div class="shell match-grid"><MatchCard type="next" team={teamId} /><MatchCard type="result" team={teamId} /></div>
+      : <div class="shell"><EmptyState tone="dark" eyebrow={team.name} title={team.matches.statusTitle} text={team.matches.statusText} /></div>}
+  </section>
+
+  <section class="quick-strip" aria-label="Quick links"><div class="shell quick-grid"><a href={sectionHref(teamId, 'matches')}><small>01</small><strong>Fixtures & results</strong><span>Follow the {team.phrase}</span></a><a href={sectionHref(teamId, 'team')}><small>02</small><strong>Meet the team</strong><span>{hasSquad ? 'Players and management' : 'Squad to be announced'}</span></a><a href={shared('/club/', 'matchday')}><small>03</small><strong>Plan your visit</strong><span>Matchday information</span></a><a href={shared('/commercial/')}><small>04</small><strong>Back Brid Town</strong><span>Commercial opportunities</span></a></div></section>
+
+  <section class="section news-section"><div class="shell"><SectionHeading eyebrow={team.name} title="Latest news" linkLabel={`All ${team.label.toLowerCase()} news`} linkHref={sectionHref(teamId, 'news')} />
+    {team.news.length > 0
+      ? <div class="news-layout">{team.news.map((story, index) => <article class:list={['story-card', index === 0 && 'featured']}><div class="story-media" role="img" aria-label="Approved club photography placeholder"><span>Photo {String(index + 1).padStart(2, '0')}</span></div><div class="story-content"><p class="story-meta"><span>{story.category}</span><time>Content pending</time></p><h3>{story.title}</h3>{index === 0 && <p>{story.summary}</p>}<a class="card-link" href={linkFor(teamId, story.link)}>Read more <span aria-hidden="true">→</span></a></div></article>)}</div>
+      : <EmptyState headingLevel="h3" title={team.newsPage.emptyTitle} text={team.newsPage.emptyText} />}
+  </div></section>
+
+  <section class="section season-section"><div class="shell season-grid">
+    {team.matches.hasMatchCentre
+      ? <LeaguePreview team={teamId} />
+      : <section class="league-empty" aria-labelledby="league-title"><p class="eyebrow light">League position</p><h2 id="league-title">The table</h2><p>League information for the {team.phrase} will be shown here once the competition and an approved data source are confirmed.</p></section>}
+    <div class="community-panel"><div class="community-photo" role="img" aria-label="Approved Bridlington community photograph placeholder"><span>Community photography pending</span></div><div class="community-copy"><p class="eyebrow">Our town. Our club.</p><h2>At the heart of Bridlington</h2><p>Bridlington Town AFC is part of the wider community around it. This space will share verified club, youth, charity and local partnership activity as content is supplied.</p><a class="button outline" href={shared('/club/')}>Discover the club</a></div></div>
+  </div></section>
+
+  <section class="section commercial-callout"><div class="commercial-mark" aria-hidden="true">BT</div><div class="shell commercial-grid"><div><p class="eyebrow light">Business meets football</p><h2>Put your business behind the Seasiders</h2></div><div><p>From matchday visibility to principal partnerships, work with a club carrying the pride and ambition of Bridlington.</p><div class="cta-row"><a class="button light" href={shared('/commercial/')}>Partner with Brid Town</a><a class="text-link" href={shared('/commercial/')}>View sponsorship opportunities →</a></div></div></div></section>
+
+  <SponsorStrip />
+
+  <section class="section social-section dark-surface"><div class="shell social-grid"><div><p class="eyebrow light">Follow the Seasiders</p><h2>Stay close to the club</h2><p>Official social channels and future matchday updates will connect here without relying on a fake or fragile social feed.</p></div><div class="social-placeholders"><span>Facebook</span><span>Instagram</span><span>X / Twitter</span><span>YouTube</span></div></div></section>
+</BaseLayout>
+
+<style>
+  .home-hero{position:relative;min-height:min(760px,84vh);overflow:hidden}.photo-stage{position:absolute;inset:0;display:grid;place-items:center;color:#777;background:repeating-linear-gradient(115deg,#1b1b1b 0 44px,#202020 45px 46px);font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.hero-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,8,8,.97) 0%,rgba(8,8,8,.78) 47%,rgba(8,8,8,.25) 100%)}.hero-content{position:relative;z-index:1;display:grid;min-height:min(760px,84vh);grid-template-columns:180px minmax(0,760px);align-items:center;gap:2.5rem;padding-block:5rem}.hero-badge{width:180px;height:auto;filter:drop-shadow(0 8px 20px rgba(0,0,0,.45))}.hero-content h1{margin-bottom:1rem}.hero-content h1 span{color:#ef5261}.hero-copy{max-width:650px;color:#eee;font-size:1.15rem}.hero-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.75rem}
+  .match-centre{padding:2.5rem 0 3rem}.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;max-width:1000px}.quick-strip{border-bottom:1px solid var(--line);background:#fff}.quick-grid{display:grid;grid-template-columns:repeat(4,1fr)}.quick-grid a{display:grid;min-height:132px;align-content:center;padding:1.25rem;border-right:1px solid var(--line);text-decoration:none}.quick-grid a:first-child{border-left:1px solid var(--line)}.quick-grid small{color:var(--red);font-weight:800}.quick-grid strong{font-family:var(--display);font-size:1.45rem;text-transform:uppercase}.quick-grid span{color:var(--muted);font-size:.8rem}
+  .news-layout{display:grid;grid-template-columns:1.35fr .65fr;gap:1.25rem}.story-card{display:grid;border-bottom:1px solid var(--line)}.story-card:not(.featured){grid-column:2}.story-card:nth-child(2){grid-row:1}.story-card.featured{grid-row:span 2}.story-media{display:grid;min-height:220px;place-items:center;color:#888;background:repeating-linear-gradient(135deg,#e8e8e8 0 28px,#ededed 29px 30px);font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.featured .story-media{min-height:360px}.story-content{padding:1.5rem 0}.story-meta{display:flex;justify-content:space-between;gap:1rem;color:#777;font-size:.7rem;font-weight:800;text-transform:uppercase}.story-meta span{color:var(--red)}.story-content h3{font-size:2rem}.featured .story-content h3{font-size:clamp(2.4rem,5vw,4rem)}
+  .league-empty{padding:1.5rem;color:#fff;background:var(--ink)}.league-empty h2{font-size:3rem}.league-empty p:last-child{margin:0;color:#d7d7d7}
+  .season-section{background:var(--mist)}.season-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:1.5rem}.community-panel{display:grid;background:#fff}.community-photo{display:grid;min-height:260px;place-items:center;color:#999;background:repeating-linear-gradient(45deg,#ddd 0 30px,#e6e6e6 31px 32px);font-size:.7rem;font-weight:800;text-transform:uppercase}.community-copy{padding:2rem}
+  .commercial-callout{position:relative;overflow:hidden;color:#fff;background:var(--red)}.commercial-mark{position:absolute;right:-.03em;bottom:-.32em;color:rgba(0,0,0,.1);font:900 25rem/1 var(--display)}.commercial-grid{position:relative;display:grid;grid-template-columns:1.3fr .7fr;align-items:end;gap:4rem}.commercial-grid h2{margin:0}.cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem;margin-top:1.5rem}.text-link{font-weight:800;text-underline-offset:4px}.social-grid{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:4rem}.social-placeholders{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#444}.social-placeholders span{display:grid;min-height:90px;place-items:center;background:#202020;font-family:var(--display);font-size:1.25rem;font-weight:800;text-transform:uppercase}
+  @media(max-width:850px){.hero-content{grid-template-columns:100px 1fr}.hero-badge{width:100px}.match-grid,.season-grid,.commercial-grid,.social-grid{grid-template-columns:1fr}.news-layout{grid-template-columns:1fr}.story-card:not(.featured){grid-column:auto}.story-card:nth-child(2){grid-row:auto}.story-card.featured{grid-row:auto}.quick-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.home-hero,.hero-content{min-height:680px}.hero-content{grid-template-columns:1fr;align-content:center}.hero-badge{width:88px}.match-grid{width:100%;padding-inline:1rem}.quick-grid{grid-template-columns:1fr}.quick-grid a{min-height:105px;border-left:1px solid var(--line)}.social-placeholders{grid-template-columns:1fr}}
+</style>

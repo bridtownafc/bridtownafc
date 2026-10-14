@@ -1,0 +1,46 @@
+---
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import { sharedContext, type TeamContext } from '@/lib/team-context';
+import type { Section, TeamId } from '@/data/teams';
+import '@/styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  eyebrow?: string;
+  /** Set on team pages (from the URL). Omit on shared club pages. */
+  team?: TeamId;
+  section?: Section;
+}
+
+const { title, description, team, section } = Astro.props;
+const ctx: TeamContext = team ? { team, shared: false, section } : sharedContext;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#a81c2c" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <title>{title}</title>
+    <slot name="head" />
+  </head>
+  <body data-team={ctx.team} data-team-mode={ctx.shared ? 'shared' : 'team'}>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <Header ctx={ctx} />
+    <main id="main-content">
+      <slot />
+    </main>
+    <Footer ctx={ctx} />
+  </body>
+</html>

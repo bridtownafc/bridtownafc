@@ -1,0 +1,19 @@
+---
+// Honest placeholder for team content that has not been supplied or verified yet.
+interface Props { eyebrow?: string; title: string; text: string; tone?: 'light' | 'dark'; headingLevel?: 'h2' | 'h3'; }
+const { eyebrow, title, text, tone = 'light', headingLevel: Heading = 'h2' } = Astro.props;
+---
+<div class:list={['empty-state', tone]}>
+  {eyebrow && <p class:list={['eyebrow', tone === 'dark' && 'light']}>{eyebrow}</p>}
+  <Heading>{title}</Heading>
+  <p>{text}</p>
+  <slot />
+</div>
+<style>
+  .empty-state { max-width: 780px; padding: clamp(1.5rem, 5vw, 3rem); border-left: 5px solid var(--red); background: var(--mist); }
+  .empty-state.dark { color: #fff; background: #161616; border-left-color: var(--red); }
+  .empty-state h2 { font-size: clamp(2.4rem, 5vw, 4rem); }
+  .empty-state h3 { margin-bottom: .75rem; font-size: clamp(1.8rem, 3.5vw, 2.4rem); }
+  .empty-state p:last-of-type { margin-bottom: 0; }
+  .empty-state.dark p:not(.eyebrow) { color: #d7d7d7; }
+</style>

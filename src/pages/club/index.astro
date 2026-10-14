@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+---
+<BaseLayout title="The Club | Bridlington Town AFC" description="Learn about Bridlington Town AFC, its history, stadium, people and place in the community.">
+  <PageHero eyebrow="Bridlington Town AFC" title="Proud of our past. Building our future." introduction="A football club rooted in its town, powered by its people and ambitious about what comes next." />
+  <section class="section"><div class="shell grid-2"><article><p class="eyebrow">Our club</p><h2>Bridlington’s team</h2><p>From generations of supporters to the volunteers, players, staff and businesses carrying the club forward, Bridlington Town AFC belongs to the community around it.</p><p>This section will grow into the definitive home for club history, honours, leadership, policies and community work.</p></article><div class="history-panel"><span>1918</span><p>Club heritage content will be verified and expanded from approved historical records.</p></div></div></section>
+  <section id="matchday" class="section matchday"><div class="shell"><p class="eyebrow">Plan your visit</p><h2>Matchday at Brid Town</h2><div class="grid-3"><div class="card"><h3>Getting here</h3><p>Queensgate, Bridlington. Full verified directions, parking and public-transport information will be added before launch.</p></div><div class="card"><h3>Admission</h3><p>Current ticket and admission prices will be managed centrally so supporters always see the latest information.</p></div><div class="card"><h3>Accessibility</h3><p>Access routes, facilities and assistance details will be published with a named contact for advance questions.</p></div></div></div></section>
+</BaseLayout>
+<style>
+  .history-panel { display: grid; min-height: 360px; align-content: end; padding: 2rem; color: #fff; background: var(--ink); }
+  .history-panel span { color: var(--red); font: 900 clamp(5rem, 15vw, 10rem)/.8 var(--display); }
+  .history-panel p { max-width: 420px; margin: 2rem 0 0; }
+  .matchday { background: var(--mist); }
+</style>

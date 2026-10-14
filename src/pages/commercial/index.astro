@@ -1,0 +1,23 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+import { commercialOptions } from '@/data/site';
+---
+<BaseLayout title="Commercial Partnerships | Bridlington Town AFC" description="Partner with Bridlington Town AFC through sponsorship, advertising and matchday opportunities.">
+  <PageHero eyebrow="Partner with the Seasiders" title="Football. Community. Business." introduction="Build visibility, local relationships and real community value through a partnership with Bridlington Town AFC." />
+  <section class="section"><div class="shell"><div class="section-head"><div><p class="eyebrow">Current opportunities</p><h2>Back the club</h2></div><p class="section-copy">From an accessible matchday package to a principal partnership, we can build the right platform for your organisation.</p></div><div class="grid-2">{commercialOptions.map((item) => <article class="package"><div><span class="label">{item.category}</span><h3>{item.title}</h3><p>{item.detail}</p></div><div class="price"><small>From</small><strong>{item.price}</strong></div></article>)}</div></div></section>
+  <section class="section dark-surface"><div class="shell value-grid"><div><p class="eyebrow light">Bigger partnerships</p><h2>Make your mark on the next chapter</h2></div><div class="value-list"><p>Principal club partnership</p><p>Stadium and stand naming rights</p><p>Home, away and training-wear sponsorship</p><p>Events, hospitality and bespoke campaigns</p></div></div></section>
+  <section id="enquire" class="section"><div class="shell enquiry"><div><p class="eyebrow">Start a conversation</p><h2>Let’s build a partnership</h2><p>Tell us what your business wants to achieve and the club’s commercial team will shape the right opportunity.</p></div><a class="button" href="/contact/">Make an enquiry</a></div></section>
+</BaseLayout>
+<style>
+  .section-copy { max-width: 430px; }
+  .package { display: flex; min-height: 190px; align-items: end; justify-content: space-between; gap: 1.5rem; padding: 1.75rem; border: 1px solid var(--line); border-top: 5px solid var(--red); }
+  .package h3 { font-size: 2rem; }
+  .price { text-align: right; }
+  .price small { display: block; color: var(--muted); }
+  .price strong { color: var(--red); font: 900 2.5rem var(--display); }
+  .value-grid, .enquiry { display: grid; grid-template-columns: 1.2fr .8fr; align-items: center; gap: 4rem; }
+  .value-list p { padding: 1rem 0; border-bottom: 1px solid #444; font-family: var(--display); font-size: 1.5rem; font-weight: 700; text-transform: uppercase; }
+  .enquiry .button { justify-self: end; }
+  @media (max-width: 700px) { .package { align-items: start; flex-direction: column; } .price { text-align: left; } .value-grid, .enquiry { grid-template-columns: 1fr; } .enquiry .button { justify-self: start; } }
+</style>

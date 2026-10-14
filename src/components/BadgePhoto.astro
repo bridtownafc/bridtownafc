@@ -1,0 +1,14 @@
+---
+// Club logo in the same 4:5 frame as squad photos, contained so the badge is never cropped.
+import { squadLogo } from '@/lib/brand';
+
+interface Props { alt: string; eager?: boolean; class?: string; }
+const { alt, eager = false, class: className } = Astro.props;
+---
+<div class:list={['player-photo', 'badge-photo', className]}>
+  <img src={squadLogo} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+</div>
+<style>
+  .badge-photo { display: grid; aspect-ratio: 4 / 5; place-items: center; overflow: hidden; padding: 18%; background: radial-gradient(circle at 50% 42%, #2a2a2a, #121212 70%); }
+  .badge-photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+</style>

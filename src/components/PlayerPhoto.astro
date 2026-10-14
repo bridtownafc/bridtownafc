@@ -1,0 +1,27 @@
+---
+import BadgePhoto from '@/components/BadgePhoto.astro';
+import { photoAlt, photoFallback, photoSrcset, type Player, type Team } from '@/data/teams';
+
+interface Props { team: Team; player: Player; sizes: string; eager?: boolean; class?: string; }
+const { team, player, sizes, eager = false, class: className } = Astro.props;
+---
+{player.photo
+  ? <picture class:list={['player-photo', className]}>
+      <source type="image/webp" srcset={photoSrcset(team, player, 'webp')} sizes={sizes} />
+      <img
+        src={photoFallback(team, player)}
+        srcset={photoSrcset(team, player, 'jpg')}
+        sizes={sizes}
+        alt={photoAlt(team, player)}
+        width="800"
+        height="1000"
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchpriority={eager ? 'high' : undefined}
+      />
+    </picture>
+  : <BadgePhoto alt={photoAlt(team, player)} eager={eager} class={className} />}
+<style>
+  .player-photo { display: block; aspect-ratio: 4 / 5; overflow: hidden; background: #2f8a2a; }
+  .player-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+</style>

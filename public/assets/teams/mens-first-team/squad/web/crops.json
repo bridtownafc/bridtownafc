@@ -1,0 +1,182 @@
+{
+  "ahmed-salam": {
+    "source": "ahmed-salam-IMG_7935.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2296,
+      "height": 2870
+    }
+  },
+  "alex-baird": {
+    "source": "alex-baird-IMG_8288.jpg",
+    "crop": {
+      "left": 30,
+      "top": 0,
+      "width": 2694,
+      "height": 3367
+    }
+  },
+  "alex-huntsman": {
+    "source": "alex-huntsman-IMG_8186.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2120,
+      "height": 2650
+    }
+  },
+  "alex-markham": {
+    "source": "alex-markham-IMG_9163.jpg",
+    "crop": {
+      "left": 0,
+      "top": 213,
+      "width": 2838,
+      "height": 3547
+    }
+  },
+  "ben-tweed": {
+    "source": "ben-tweed-IMG_8125.jpg",
+    "crop": {
+      "left": 388,
+      "top": 0,
+      "width": 2046,
+      "height": 2557
+    }
+  },
+  "ben-whelan": {
+    "source": "ben-whelan-IMG_8355.jpg",
+    "crop": {
+      "left": 0,
+      "top": 105,
+      "width": 2102,
+      "height": 2627
+    }
+  },
+  "bill-marshall": {
+    "source": "bill-marshall-IMG_8713.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2498,
+      "height": 3122
+    }
+  },
+  "casey-stewart": {
+    "source": "casey-stewart-IMG_9065.jpg",
+    "crop": {
+      "left": 506,
+      "top": 0,
+      "width": 2357,
+      "height": 2946
+    }
+  },
+  "charley-whight": {
+    "source": "charley-whight-IMG_9252.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2766,
+      "height": 3457
+    }
+  },
+  "charlie-birdsall": {
+    "source": "charlie-birdsall-IMG_8941.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2431,
+      "height": 3038
+    }
+  },
+  "destiny": {
+    "source": "destiny-IMG_8436.jpg",
+    "crop": {
+      "left": 48,
+      "top": 78,
+      "width": 2517,
+      "height": 3146
+    }
+  },
+  "eddie-kettlewell": {
+    "source": "eddie-kettlewell-IMG_8582.jpg",
+    "crop": {
+      "left": 0,
+      "top": 93,
+      "width": 2648,
+      "height": 3310
+    }
+  },
+  "fanning": {
+    "source": "fanning-IMG_8217.jpg",
+    "crop": {
+      "left": 0,
+      "top": 98,
+      "width": 1960,
+      "height": 2450
+    }
+  },
+  "joe-batty": {
+    "source": "joe-batty-IMG_8083.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2135,
+      "height": 2668
+    }
+  },
+  "joe-pratley": {
+    "source": "joe-pratley-IMG_8003.jpg",
+    "crop": {
+      "left": 241,
+      "top": 168,
+      "width": 1920,
+      "height": 2400
+    }
+  },
+  "liam-tibbett": {
+    "source": "liam-tibbett-IMG_9005.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2366,
+      "height": 2957
+    }
+  },
+  "luca-bolino": {
+    "source": "luca-bolino-IMG_8644.jpg",
+    "crop": {
+      "left": 0,
+      "top": 91,
+      "width": 2032,
+      "height": 2540
+    }
+  },
+  "riley-cooper": {
+    "source": "riley-cooper-IMG_8507.jpg",
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 2361,
+      "height": 2951
+    }
+  },
+  "toby-marriot": {
+    "source": "toby-marriot-IMG_8865.jpg",
+    "crop": {
+      "left": 0,
+      "top": 249,
+      "width": 2168,
+      "height": 2710
+    }
+  },
+  "tom-allan": {
+    "source": "tom-allan-IMG_8784.jpg",
+    "crop": {
+      "left": 0,
+      "top": 256,
+      "width": 2554,
+      "height": 3192
+    }
+  }
+}

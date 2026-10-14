@@ -1,0 +1,127 @@
+---
+import TeamSwitch from '@/components/TeamSwitch.astro';
+import { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY, primaryNavigation } from '@/data/teams';
+import { teamLink, type TeamContext } from '@/lib/team-context';
+
+interface Props { ctx: TeamContext; }
+const { ctx } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const currentFor = (item: (typeof primaryNavigation)[number]) => {
+  if ('shared' in item.target) return item.target.shared === currentPath ? 'page' : undefined;
+  if (ctx.shared || item.target.section !== ctx.section) return undefined;
+  return currentPath === teamLink(ctx, item.target).href ? 'page' : 'true';
+};
+---
+
+<header class="site-header">
+  <div class="score-ribbon">
+    <div class="shell ribbon-inner">
+      <span class="ribbon-kicker">The Seasiders</span>
+      <span class="ribbon-message">Official website of Bridlington Town AFC</span>
+      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Matchday information</a>
+    </div>
+  </div>
+  <div class="shell header-main">
+    <a class="brand" {...teamLink(ctx, { section: 'home' })} aria-label="Bridlington Town AFC home">
+      <img class="brand-badge" src="/assets/brand/brid-town-badge-black.png" alt="Bridlington Town AFC badge" width="1323" height="1189" />
+      <span>
+        <strong>Bridlington Town</strong>
+        <small>Association Football Club</small>
+      </span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-menu">Menu</button>
+      <ul id="primary-menu" class="primary-menu">
+        {primaryNavigation.map((item) => (
+          <li><a {...teamLink(ctx, item.target)} aria-current={currentFor(item)}>{item.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+    <div class="header-tools">
+      <TeamSwitch ctx={ctx} />
+      <div class="header-actions">
+        <a class="header-commercial" {...teamLink(ctx, { shared: '/commercial/' })}>Commercial</a>
+        <a class="header-tickets" {...teamLink(ctx, { section: 'matches' })}>Tickets</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
+  const menu = document.querySelector<HTMLElement>('#primary-menu');
+  toggle?.addEventListener('click', () => {
+    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!isOpen));
+    menu?.classList.toggle('is-open', !isOpen);
+  });
+</script>
+
+<!-- Inline so shared pages show the right team before first paint. Team pages only remember their team. -->
+<script is:inline define:vars={{ storageKey: TEAM_STORAGE_KEY, teamIds: TEAM_IDS, defaultTeam: DEFAULT_TEAM }}>
+  (function () {
+    var body = document.body;
+    var isTeam = function (value) { return teamIds.indexOf(value) !== -1; };
+    var save = function (team) { try { localStorage.setItem(storageKey, team); } catch (e) {} };
+    var load = function () { try { return localStorage.getItem(storageKey); } catch (e) { return null; } };
+    var resolve = function () {
+      if (body.dataset.teamMode === 'team') return body.dataset.team;
+      var url = new URL(location.href);
+      var requested = url.searchParams.get('team');
+      if (isTeam(requested)) { save(requested); return requested; }
+      var remembered = load();
+      var team = isTeam(remembered) ? remembered : defaultTeam;
+      // Record the team in the URL so refresh and back/forward return to the same view.
+      url.searchParams.set('team', team);
+      history.replaceState(history.state, '', url);
+      return team;
+    };
+    var resolved = null;
+    var apply = function () {
+      var team = resolved || (resolved = resolve());
+      if (body.dataset.teamMode === 'team') { save(team); return; }
+      body.dataset.team = team;
+      document.querySelectorAll('[data-team-hrefs]').forEach(function (el) {
+        var hrefs = JSON.parse(el.getAttribute('data-team-hrefs'));
+        if (hrefs[team]) el.setAttribute('href', hrefs[team]);
+      });
+      document.querySelectorAll('[data-team-text]').forEach(function (el) {
+        var text = JSON.parse(el.getAttribute('data-team-text'));
+        if (text[team]) el.textContent = text[team];
+      });
+      document.querySelectorAll('[data-team-option]').forEach(function (el) {
+        if (el.getAttribute('data-team-option') === team) el.setAttribute('aria-current', 'true');
+        else el.removeAttribute('aria-current');
+      });
+    };
+    apply();
+    document.addEventListener('DOMContentLoaded', apply);
+    addEventListener('pageshow', function (event) { if (event.persisted) { resolved = null; apply(); } });
+  })();
+</script>
+
+<style>
+  .header-tools { display: flex; align-items: center; gap: 1rem; }
+  @media (max-width: 1180px) and (min-width: 851px) {
+    .header-main { gap: 1.25rem; }
+    .header-commercial { display: none; }
+  }
+  @media (max-width: 850px) {
+    .header-main { gap: .75rem; }
+    .brand { margin-right: auto; }
+    .header-tools { order: 2; }
+    .main-nav { order: 3; }
+  }
+  /* Keep brand, team switch and menu on one uncluttered row on phones. */
+  @media (max-width: 480px) {
+    .header-main { gap: .5rem; }
+    .brand { gap: .5rem; min-width: 0; }
+    .brand-badge { width: 42px; height: 42px; }
+    .brand strong { font-size: 1.1rem; }
+    .menu-toggle { padding: .55rem .7rem; }
+  }
+  @media (max-width: 379px) {
+    .brand > span { display: none; }
+  }
+</style>

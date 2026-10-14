@@ -1,0 +1,8 @@
+---
+interface Props { eyebrow: string; title: string; linkLabel?: string; linkHref?: string; light?: boolean; }
+const { eyebrow, title, linkLabel, linkHref, light = false } = Astro.props;
+---
+<div class="section-head">
+  <div><p class:list={['eyebrow', light && 'light']}>{eyebrow}</p><h2>{title}</h2></div>
+  {linkLabel && linkHref && <a class="section-link" href={linkHref}>{linkLabel} <span aria-hidden="true">→</span></a>}
+</div>

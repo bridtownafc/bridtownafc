@@ -1,0 +1,22 @@
+<section class="partner-strip" aria-labelledby="partner-title">
+  <div class="shell">
+    <div class="partner-head"><p id="partner-title">Our partners</p><a href="/commercial/">Become a partner →</a></div>
+    <div class="partner-grid">
+      <div class="partner-slot principal"><small>Principal partner</small><span>Partner logo</span></div>
+      <div class="partner-slot"><small>Main partner</small><span>Partner logo</span></div>
+      <div class="partner-slot"><small>Official partner</small><span>Partner logo</span></div>
+      <div class="partner-slot"><small>Community partner</small><span>Partner logo</span></div>
+    </div>
+  </div>
+</section>
+<style>
+  .partner-strip { padding: 2.5rem 0; border-block: 1px solid var(--line); }
+  .partner-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+  .partner-head p { margin: 0; }
+  .partner-head a { color: var(--red); }
+  .partner-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 1px; background: var(--line); }
+  .partner-slot { display: grid; min-height: 110px; place-items: center; padding: 1rem; background: #fff; text-align: center; }
+  .partner-slot small { color: #888; font-size: .63rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .partner-slot span { color: #aaa; font: 800 1rem var(--display); text-transform: uppercase; }
+  @media(max-width: 700px){.partner-grid{grid-template-columns:1fr 1fr}.partner-head{align-items:start;flex-direction:column}}
+</style>

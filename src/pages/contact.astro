@@ -1,0 +1,9 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+---
+<BaseLayout title="Contact | Bridlington Town AFC" description="Contact Bridlington Town AFC about football, matchdays, community activity and commercial partnerships.">
+  <PageHero eyebrow="Get in touch" title="Contact the club" introduction="Choose the right enquiry route and help us get your message to the right person." />
+  <section class="section"><div class="shell contact-grid"><div><p class="eyebrow">Enquiries</p><h2>How can we help?</h2><p>Public contact details and the working enquiry form will be connected once recipients, consent wording and data-retention arrangements are confirmed.</p></div><div class="grid-2"><div class="card"><h3>Commercial</h3><p>Sponsorship, advertising, hospitality and partnerships.</p><a class="card-link" href="/commercial/">View opportunities →</a></div><div class="card"><h3>Matchday</h3><p>Admission, directions, accessibility and supporter questions.</p><a class="card-link" href="/club/#matchday">Matchday information →</a></div><div class="card"><h3>Football</h3><p>Team, fixtures, media and football-related enquiries.</p></div><div class="card"><h3>Community</h3><p>Events, organisations, charities and community work.</p></div></div></div></section>
+</BaseLayout>
+<style>.contact-grid { display: grid; grid-template-columns: .7fr 1.3fr; gap: 4rem; } @media(max-width:850px){.contact-grid{grid-template-columns:1fr}}</style>

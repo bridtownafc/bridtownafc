@@ -1,0 +1,36 @@
+---
+import { sectionHref, type TeamId } from '@/data/teams';
+
+interface Props { team: TeamId; }
+const { team } = Astro.props;
+---
+<section class="league-card" aria-labelledby="league-title">
+  <div class="league-head"><div><p class="eyebrow light">League position</p><h2 id="league-title">The table</h2></div><span>Data source pending</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pos</th><th>Team</th><th>P</th><th>GD</th><th>Pts</th></tr></thead>
+      <tbody>
+        <tr class="pending"><td>–</td><td>Position above</td><td>–</td><td>–</td><td>–</td></tr>
+        <tr class="brid"><td>–</td><td><img src="/assets/brand/brid-town-badge-black.png" alt="" width="1323" height="1189" />Bridlington Town</td><td>–</td><td>–</td><td>–</td></tr>
+        <tr class="pending"><td>–</td><td>Position below</td><td>–</td><td>–</td><td>–</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="table-link" href={sectionHref(team, 'matches')}>View full table <span aria-hidden="true">→</span></a>
+</section>
+<style>
+  .league-card { color: #fff; background: var(--ink); }
+  .league-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding: 1.5rem; }
+  .league-head h2 { margin: 0; font-size: 3rem; }
+  .league-head span { color: #999; font-size: .7rem; text-transform: uppercase; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 1rem; border-top: 1px solid #373737; text-align: right; }
+  th { color: #999; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+  th:nth-child(2), td:nth-child(2) { text-align: left; }
+  td:nth-child(2) { display: flex; align-items: center; gap: .65rem; font-weight: 800; }
+  td img { width: 30px; height: 30px; object-fit: contain; }
+  .brid { background: var(--red); }
+  .pending { color: #777; }
+  .table-link { display: flex; justify-content: space-between; padding: 1rem 1.5rem; color: #fff; font-family: var(--display); font-weight: 800; text-decoration: none; text-transform: uppercase; }
+</style>

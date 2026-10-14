@@ -1,0 +1,42 @@
+---
+import { teamLink, teamText, type TeamContext } from '@/lib/team-context';
+
+interface Props { ctx: TeamContext; }
+const { ctx } = Astro.props;
+const squadLabel = teamText(ctx, { mens: "Men's first team", womens: "Women's team" });
+---
+<footer class="site-footer">
+  <div class="shell footer-grid">
+    <div>
+      <img class="footer-badge" src="/assets/brand/brid-town-badge-black.png" alt="Bridlington Town AFC badge" width="1323" height="1189" loading="lazy" />
+      <div class="footer-brand">Bridlington Town AFC</div>
+      <p>Football at the heart of the Bridlington community.</p>
+    </div>
+    <div>
+      <h2>Matchday</h2>
+      <a {...teamLink(ctx, { section: 'matches' })}>Fixtures & results</a>
+      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Directions & admission</a>
+    </div>
+    <div>
+      <h2>Club</h2>
+      <a {...teamLink(ctx, { section: 'team' })} {...squadLabel.attrs}>{squadLabel.text}</a>
+      <a {...teamLink(ctx, { shared: '/club/' })}>About the club</a>
+      <a {...teamLink(ctx, { shared: '/contact/' })}>Contact</a>
+    </div>
+    <div>
+      <h2>Partners</h2>
+      <a {...teamLink(ctx, { shared: '/commercial/' })}>Commercial opportunities</a>
+      <a {...teamLink(ctx, { shared: '/commercial/', hash: 'enquire' })}>Partner with us</a>
+    </div>
+    <div>
+      <h2>Information</h2>
+      <a {...teamLink(ctx, { shared: '/club/' })}>Policies</a>
+      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Accessibility</a>
+      <a {...teamLink(ctx, { shared: '/contact/' })}>Contact the club</a>
+    </div>
+  </div>
+  <div class="shell footer-bottom">
+    <span>© {new Date().getFullYear()} Bridlington Town AFC</span>
+    <span>Website V1 — local development build</span>
+  </div>
+</footer>

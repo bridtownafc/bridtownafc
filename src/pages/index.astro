@@ -1,0 +1,38 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY, sectionHref, teams } from '@/data/teams';
+
+// The root homepage opens the visitor's last selected team, or the men's team by default.
+// Explicit team URLs (/mens/, /womens/) never consult the remembered choice.
+const homes = Object.fromEntries(TEAM_IDS.map((id) => [id, sectionHref(id, 'home')]));
+---
+<BaseLayout title="Bridlington Town AFC | Official Website" description="The official home of Bridlington Town AFC — choose the men's first team or women's team for fixtures, results, news and squad information.">
+  <Fragment slot="head">
+    <script is:inline define:vars={{ storageKey: TEAM_STORAGE_KEY, homes, defaultTeam: DEFAULT_TEAM }}>
+      var remembered = null;
+      try { remembered = localStorage.getItem(storageKey); } catch (e) {}
+      location.replace(homes[remembered] || homes[defaultTeam]);
+    </script>
+    <noscript><meta http-equiv="refresh" content={`0;url=${homes[DEFAULT_TEAM]}`} /></noscript>
+  </Fragment>
+  <section class="section dark-surface chooser">
+    <div class="shell">
+      <p class="eyebrow light">Bridlington Town AFC</p>
+      <h1>Choose your team</h1>
+      <div class="chooser-grid">
+        {TEAM_IDS.map((id) => (
+          <a class="chooser-card" href={homes[id]}><small>The Seasiders</small><strong>{teams[id].name}</strong><span>Go to the {teams[id].phrase} <span aria-hidden="true">→</span></span></a>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+<style>
+  .chooser h1 { font-size: clamp(3rem, 8vw, 6rem); }
+  .chooser-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 900px; }
+  .chooser-card { display: grid; gap: .35rem; padding: 1.75rem; border-top: 5px solid var(--red); color: #fff; background: #1b1b1b; text-decoration: none; }
+  .chooser-card:hover { background: #252525; }
+  .chooser-card small { color: #ef7f89; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .chooser-card strong { font: 900 clamp(2rem, 4vw, 3rem)/1 var(--display); text-transform: uppercase; }
+  @media (max-width: 560px) { .chooser-grid { grid-template-columns: 1fr; } }
+</style>

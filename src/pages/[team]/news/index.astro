@@ -1,0 +1,29 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+import EmptyState from '@/components/EmptyState.astro';
+import { TEAM_IDS, linkFor, teams, type TeamId } from '@/data/teams';
+
+export function getStaticPaths() {
+  return TEAM_IDS.map((team) => ({ params: { team } }));
+}
+
+const teamId = Astro.params.team as TeamId;
+const team = teams[teamId];
+---
+<BaseLayout team={teamId} section="news" title={`News | ${team.name} | Bridlington Town AFC`} description={`The latest Bridlington Town AFC ${team.phrase} news.`}>
+  <PageHero eyebrow={team.name} title={`${team.label} News`} introduction={team.newsPage.introduction} />
+  <section class="section"><div class="shell">
+    {team.news.length > 0
+      ? <>
+          <div class="filters"><button class="active">All</button><button>Club news</button><button>Match reports</button><button>Commercial</button><button>Community</button></div>
+          <div class="grid-3">{team.news.map((story) => <article class="card"><span class="label">{story.category}</span><h3>{story.title}</h3><p>{story.summary}</p><a class="card-link" href={linkFor(teamId, story.link)}>Read story →</a></article>)}</div>
+        </>
+      : <EmptyState title={team.newsPage.emptyTitle} text={team.newsPage.emptyText} />}
+  </div></section>
+</BaseLayout>
+<style>
+  .filters { display: flex; overflow-x: auto; margin-bottom: 2rem; gap: .5rem; }
+  .filters button { padding: .6rem .9rem; border: 1px solid var(--line); background: #fff; font-weight: 700; white-space: nowrap; }
+  .filters .active { border-color: var(--red); color: #fff; background: var(--red); }
+</style>

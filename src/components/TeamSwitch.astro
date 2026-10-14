@@ -1,0 +1,28 @@
+---
+import { TEAM_IDS, sectionHref, teams } from '@/data/teams';
+import type { TeamContext } from '@/lib/team-context';
+
+interface Props { ctx: TeamContext; }
+const { ctx } = Astro.props;
+const path = Astro.url.pathname;
+
+// Team pages open the equivalent section of the other team (a player profile opens the
+// other team's squad). Shared pages stay put and only change the selected team.
+const hrefFor = (id: (typeof TEAM_IDS)[number]) =>
+  ctx.shared ? `${path}?team=${id}` : sectionHref(id, ctx.section ?? 'home');
+---
+<nav class="team-switch" aria-label="Choose team">
+  {TEAM_IDS.map((id) => (
+    <a href={hrefFor(id)} data-team-option={id} aria-current={id === ctx.team ? 'true' : undefined}>
+      {teams[id].label}<span class="visually-hidden"> team</span>
+    </a>
+  ))}
+</nav>
+<style>
+  .team-switch { display: inline-flex; flex-shrink: 0; padding: 3px; border: 1px solid #555; border-radius: 999px; background: #000; }
+  .team-switch a { display: inline-flex; min-height: 36px; align-items: center; padding: .3rem .85rem; border-radius: 999px; color: #d7d7d7; font: 800 .95rem/1 var(--display); letter-spacing: .02em; text-decoration: none; text-transform: uppercase; white-space: nowrap; }
+  .team-switch a:hover { color: #fff; }
+  .team-switch a[aria-current='true'] { color: #fff; background: var(--red); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+  .team-switch a:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  @media (max-width: 420px) { .team-switch a { min-height: 34px; padding: .3rem .6rem; font-size: .85rem; } }
+</style>

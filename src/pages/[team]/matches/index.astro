@@ -1,0 +1,42 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+import EmptyState from '@/components/EmptyState.astro';
+import { TEAM_IDS, teams, type TeamId } from '@/data/teams';
+
+export function getStaticPaths() {
+  return TEAM_IDS.map((team) => ({ params: { team } }));
+}
+
+const teamId = Astro.params.team as TeamId;
+const team = teams[teamId];
+const live = team.matches.hasMatchCentre;
+---
+<BaseLayout team={teamId} section="matches" title={`Match Centre | ${team.name} | Bridlington Town AFC`} description={`Bridlington Town AFC ${team.phrase} fixtures, results and league information.`}>
+  <PageHero eyebrow={team.name} title="Match Centre" introduction={team.matches.introduction} />
+  <section class="section">
+    <div class="shell">
+      <div class="match-nav" aria-label="Match centre sections"><a class="active" href="#fixtures">Fixtures</a><a href="#results">Results</a><a href="#table">League table</a></div>
+      {live
+        ? <div id="fixtures" class="data-state">
+            <p class="eyebrow">2026/27 season</p><h2>{team.matches.statusTitle}</h2>
+            <p>{team.matches.statusText}</p>
+          </div>
+        : <div id="fixtures" class="empty-block"><EmptyState tone="dark" eyebrow={team.name} title={team.matches.statusTitle} text={team.matches.statusText} /></div>}
+      <div class="grid-3 match-features">
+        <div class="card"><span class="label">Fixtures</span><h3>Plan ahead</h3><p>Kick-off, venue, competition and matchday information presented clearly for home and away fixtures.</p></div>
+        <div class="card" id="results"><span class="label">Results</span><h3>{live ? 'Every result' : 'No results yet'}</h3><p>{live ? 'Scores, reports, line-ups, scorers, cards, attendance and player of the match.' : `Results for the ${team.phrase} will appear here once confirmed.`}</p></div>
+        <div class="card" id="table"><span class="label">Table</span><h3>{live ? 'Follow the season' : 'League to be confirmed'}</h3><p>{live ? 'League position, form, goal difference and points from an approved source.' : `League details for the ${team.phrase} will be added once the competition is confirmed.`}</p></div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+<style>
+  .match-nav { display: flex; overflow-x: auto; margin-bottom: 2rem; border-bottom: 1px solid var(--line); gap: 2rem; }
+  .match-nav a { padding: .9rem 0; font: 800 1.15rem var(--display); text-decoration: none; text-transform: uppercase; white-space: nowrap; }
+  .match-nav .active { border-bottom: 4px solid var(--red); color: var(--red); }
+  .data-state { max-width: 780px; margin-bottom: 3rem; padding: clamp(2rem, 6vw, 4rem); color: #fff; background: var(--ink); }
+  .data-state h2 { font-size: clamp(3rem, 6vw, 5rem); }
+  .empty-block { margin-bottom: 3rem; }
+  .match-features { margin-top: 2rem; }
+</style>

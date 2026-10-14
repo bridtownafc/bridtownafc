@@ -1,0 +1,75 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHero from '@/components/PageHero.astro';
+import PlayerPhoto from '@/components/PlayerPhoto.astro';
+import EmptyState from '@/components/EmptyState.astro';
+import BadgePhoto from '@/components/BadgePhoto.astro';
+import { TEAM_IDS, profileHref, teams, type TeamId } from '@/data/teams';
+
+export function getStaticPaths() {
+  return TEAM_IDS.map((team) => ({ params: { team } }));
+}
+
+const teamId = Astro.params.team as TeamId;
+const team = teams[teamId];
+---
+<BaseLayout team={teamId} section="team" title={`${team.name} Squad | Bridlington Town AFC`} description={`Meet the Bridlington Town AFC ${team.phrase} squad.`}>
+  <PageHero eyebrow="The Seasiders" title={team.name} introduction={team.squad.introduction} />
+  <section class="section" id="squad" aria-labelledby="squad-title">
+    <div class="shell">
+      <div class="section-head"><div><p class="eyebrow">{team.name}</p><h2 id="squad-title">Squad</h2></div></div>
+      {team.players.length > 0
+        ? <>
+            <div class="asset-notice"><strong>Squad details to follow</strong><p>Positions, squad numbers and player biographies will be added once confirmed by the club.</p></div>
+            <ul class="squad-grid" role="list">
+              {team.players.map((player) => (
+                <li>
+                  <a class="player-card" href={profileHref(teamId, player)}>
+                    <PlayerPhoto team={team} player={player} sizes="(max-width: 560px) calc(50vw - 1.5rem), (max-width: 850px) calc(33vw - 1.5rem), 280px" />
+                    <div class="player-card-body">
+                      <small>{team.name}</small>
+                      <h3>{player.name}</h3>
+                      <span class="player-card-link">View profile <span aria-hidden="true">→</span></span>
+                    </div>
+                  </a>
+                </li>
+              ))}
+              {Array.from({ length: team.placeholderCards }, () => (
+                <li>
+                  <div class="player-card is-placeholder">
+                    <BadgePhoto alt="" />
+                    <div class="player-card-body">
+                      <small>{team.name}</small>
+                      <h3>Player to be confirmed</h3>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        : <EmptyState headingLevel="h3" title={team.squad.emptyTitle} text={team.squad.emptyText} />}
+    </div>
+  </section>
+</BaseLayout>
+<style>
+  .asset-notice { max-width: 760px; margin-bottom: 2rem; padding: 1.25rem; border-left: 5px solid var(--red); background: var(--mist); }
+  .asset-notice p { margin-bottom: 0; }
+  .squad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .player-card { display: flex; height: 100%; flex-direction: column; color: #fff; background: var(--ink); text-decoration: none; }
+  .player-card :global(.player-photo img) { transition: transform .3s ease; }
+  a.player-card:hover :global(.player-photo img), a.player-card:focus-visible :global(.player-photo img) { transform: scale(1.03); }
+  .player-card:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+  .player-card-body { flex: 1; padding: 1rem 1.1rem 1.15rem; border-top: 4px solid var(--red); }
+  .player-card small { color: #ef7f89; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .player-card h3 { margin: .3rem 0 .6rem; font-size: clamp(1.45rem, 2.4vw, 2rem); }
+  .player-card-link { font-family: var(--display); font-size: .95rem; font-weight: 800; text-transform: uppercase; }
+  .player-card:hover .player-card-link { color: #ff8591; }
+  .player-card.is-placeholder h3 { color: #cfcfcf; }
+  @media (max-width: 850px) { .squad-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 560px) {
+    .squad-grid { grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .player-card-body { padding: .75rem .8rem .9rem; }
+    .player-card small { font-size: .6rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { .player-card :global(.player-photo img) { transition: none; } }
+</style>
