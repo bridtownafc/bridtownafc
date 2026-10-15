@@ -3,10 +3,14 @@
 // numbers, biographies and statistics are intentionally absent until supplied and verified.
 // No women's fixtures, league details or news have been supplied yet.
 //
-// Photos: originals go in public/assets/teams/womens-first-team/squad/ and web copies are
-// generated with `npm run images:squad`. A player without `photo` shows the club logo.
-// Requested photo references from the club are noted beside each player; none of the
-// files were present when this list was created, so no photo is mapped yet.
+// Photos: originals from the club's "Headshots" Google Drive folder (one sub-folder per
+// player), kept unmodified in public/assets/teams/womens-first-team/squad/. Web copies are
+// generated with `npm run images:squad`. A player without `photo` shows the club crest.
+// Brooke Stephenson's requested EC__6318 is not in the Drive; EC__6549 from her folder is
+// used instead, as the one shot matching the squad set (red home shirt, facing camera).
+//
+// When the site is built from Directus (CONTENT_SOURCE=directus) the CMS is the source of
+// truth and this list is not used; it is the default build's content and the seed for the CMS.
 import type { Player, Story } from './types';
 
 export const womensPhotoDir = '/assets/teams/womens-first-team/squad';
@@ -14,15 +18,17 @@ export const womensPhotoDir = '/assets/teams/womens-first-team/squad';
 /** Unnamed "Player to be confirmed" cards shown after the named players. */
 export const womensPlaceholderCards = 4;
 
+const redShirt = 'squad portrait in the red club shirt';
+
 export const womensFirstTeamPlayers: Player[] = [
-  { slug: 'brooke-stephenson', name: 'Brooke Stephenson' }, // requested EC_6318 — not yet found by the club
-  { slug: 'jess-corner', name: 'Jess Corner' }, // EC_6339
-  { slug: 'jordan-stephenson', name: 'Jordan Stephenson' }, // EC_6500
-  { slug: 'kate-bowers', name: 'Kate Bowers' }, // EC_6596
-  { slug: 'macy-crabtree', name: 'Macy Crabtree' }, // EC_6417
-  { slug: 'naomi-mainprize', name: 'Naomi Mainprize' }, // EC_6327
-  { slug: 'piper-robinson', name: 'Piper Robinson' }, // EC_6433
-  { slug: 'rene-carmichael', name: 'Rene Carmichael' }, // EC_6403
+  { slug: 'brooke-stephenson', name: 'Brooke Stephenson', photo: { original: 'brooke-stephenson-EC__6549.jpg', description: redShirt } },
+  { slug: 'jess-corner', name: 'Jess Corner', photo: { original: 'jess-corner-EC__6339.jpg', description: redShirt } },
+  { slug: 'jordan-stephenson', name: 'Jordan Stephenson', photo: { original: 'jordan-stephenson-EC__6500.jpg', description: redShirt } },
+  { slug: 'kate-bowers', name: 'Kate Bowers', photo: { original: 'kate-bowers-EC__6596.jpg', description: redShirt } },
+  { slug: 'macy-crabtree', name: 'Macy Crabtree', photo: { original: 'macy-crabtree-EC__6417.jpg', description: redShirt } },
+  { slug: 'naomi-mainprize', name: 'Naomi Mainprize', photo: { original: 'naomi-mainprize-EC__6327.jpg', description: redShirt } },
+  { slug: 'piper-robinson', name: 'Piper Robinson', photo: { original: 'piper-robinson-EC__6433.jpg', description: redShirt } },
+  { slug: 'rene-carmichael', name: 'Rene Carmichael', photo: { original: 'rene-carmichael-EC__6403.jpg', description: redShirt } },
 ];
 
 export const womensTeamNews: Story[] = [];

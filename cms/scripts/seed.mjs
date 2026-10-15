@@ -33,28 +33,40 @@ for (const [teamKey, team] of Object.entries(content.teams)) {
   const cropsFile = path.join(sourceDir, 'web', 'crops.json');
   const crops = existsSync(cropsFile) ? JSON.parse(await readFile(cropsFile, 'utf8')) : {};
 
+  /** Reuses a library file with the same name and size; otherwise uploads the original. */
+  async function photoFileFor(player) {
+    const bytes = await readFile(path.join(sourceDir, player.photo.original));
+    const [existing] = await api.get('/files' + q({
+      filter: { _and: [{ filename_download: { _eq: player.photo.original } }, { filesize: { _eq: bytes.length } }] }, fields: 'id', limit: '1',
+    }));
+    if (existing) return existing.id;
+    const form = new FormData();
+    form.append('folder', squadFolder.id);
+    form.append('title', player.name);
+    form.append('description', player.photo.description);
+    form.append('file', new Blob([bytes], { type: 'image/jpeg' }), player.photo.original);
+    return (await api.post('/files', form)).id;
+  }
+  const photoFields = async (player) => ({
+    photo: await photoFileFor(player),
+    photo_description: player.photo.description,
+    photo_crop: crops[player.slug]?.crop ?? null,
+  });
+
   for (const [index, player] of team.players.entries()) {
-    let person = await findOne('people', { slug: { _eq: player.slug } });
+    let person = await api.get('/items/people' + q({ filter: { slug: { _eq: player.slug } }, fields: 'id,photo', limit: '1' })).then((r) => r[0]);
     if (!person) {
-      let photo = null;
-      if (player.photo) {
-        const form = new FormData();
-        form.append('folder', squadFolder.id);
-        form.append('title', player.name);
-        form.append('description', player.photo.description);
-        const bytes = await readFile(path.join(sourceDir, player.photo.original));
-        form.append('file', new Blob([bytes], { type: 'image/jpeg' }), player.photo.original);
-        photo = (await api.post('/files', form)).id;
-      }
       person = await api.post('/items/people', {
         status: 'published',
         display_name: player.name,
         slug: player.slug,
-        photo,
-        photo_description: player.photo?.description ?? null,
-        photo_crop: player.photo ? crops[player.slug]?.crop ?? null : null,
+        ...(player.photo ? await photoFields(player) : {}),
       });
-      log(`+ ${player.name}${photo ? ' (photo)' : ''}`);
+      log(`+ ${player.name}${player.photo ? ' (photo)' : ''}`);
+    } else if (!person.photo && player.photo) {
+      // Only fills a missing photo; a photo chosen in Directus is never replaced.
+      await api.patch(`/items/people/${person.id}`, await photoFields(player));
+      log(`+ photo for ${player.name} (${player.photo.original})`);
     }
     if (!(await findOne('squad_memberships', { _and: [{ person: { _eq: person.id } }, { team: { _eq: teamRecord.id } }] }))) {
       await api.post('/items/squad_memberships', { status: 'published', team: teamRecord.id, person: person.id, kind: 'player', sort: index + 1 });

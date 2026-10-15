@@ -19,7 +19,8 @@
     "cms:seed": "node cms/scripts/seed.mjs",
     "cms:sync": "node cms/scripts/sync.mjs",
     "cms:listen": "node cms/scripts/rebuild-listener.mjs",
-    "cms:test:rules": "node --test cms/tests/rules.test.mjs"
+    "cms:test:rules": "node --test cms/tests/rules.test.mjs",
+    "cms:test:photo": "node cms/tests/photo-change.integration.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

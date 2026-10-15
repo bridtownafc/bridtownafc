@@ -1,6 +1,7 @@
 // Generates web-optimised 4:5 portrait copies of each team's squad photos.
 // Originals in public/assets/teams/<team>/squad/ are only read, never modified.
-// Files are named <player-slug>-<camera reference>.jpg, e.g. ahmed-salam-IMG_7935.jpg.
+// Files are named <player-slug>-<camera reference>.jpg, e.g. ahmed-salam-IMG_7935.jpg
+// or jess-corner-EC__6339.jpg.
 // Usage: npm run images:squad
 import { readdir, mkdir, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,8 +26,8 @@ for (const team of (await readdir(TEAMS_DIR)).sort()) {
   await mkdir(OUTPUT_DIR, { recursive: true });
   const manifest = {};
   for (const file of files) {
-    // Slug is everything before the camera reference (IMG_1234, EC_1234, …).
-    const slug = file.replace(/-[A-Z]+_\d+\.jpe?g$/i, '');
+    // Slug is everything before the camera reference (IMG_1234, EC__1234, …).
+    const slug = file.replace(/-[A-Z]+_+\d+\.jpe?g$/i, '');
     const source = path.join(SOURCE_DIR, file);
     const region = await cropFor(source, FRAMING[slug]);
     await writeVariants(source, region, OUTPUT_DIR, slug);
