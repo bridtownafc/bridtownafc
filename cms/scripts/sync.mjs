@@ -4,7 +4,7 @@
 // Usage: npm run cms:sync
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { siteContentSchema } from '../../src/lib/cms/schema.ts';
 import { cropFor, writeVariants } from '../../scripts/lib/squad-photos.mjs';
@@ -71,7 +71,8 @@ async function regionFor(source, file, storedCrop) {
   return cropFor(source, { centreX: file.focal_point_x != null && file.width ? file.focal_point_x / file.width : 0.5 });
 }
 
-const staging = `${MEDIA_DIR}.staging`;
+// Built outside public/ so a running dev server (which watches public/) never sees half a sync.
+const staging = '.cache/cms-media-staging';
 await rm(staging, { recursive: true, force: true });
 
 const LINKS = { news: { section: 'news' }, matches: { section: 'matches' }, team: { section: 'team' }, club: { shared: '/club/' }, commercial: { shared: '/commercial/' }, contact: { shared: '/contact/' } };
@@ -113,12 +114,44 @@ const content = siteContentSchema.parse({
 
 await mkdir(path.dirname(SNAPSHOT), { recursive: true });
 await writeFile(`${SNAPSHOT}.part`, JSON.stringify(content, null, 2) + '\n');
-const previous = `${MEDIA_DIR}.previous`;
-await rm(previous, { recursive: true, force: true });
-if (exists(MEDIA_DIR)) await rename(MEDIA_DIR, previous);
-await rename(staging, MEDIA_DIR);
-await rename(`${SNAPSHOT}.part`, SNAPSHOT);
-await rm(previous, { recursive: true, force: true });
+// Folders are never renamed: on Windows a watched folder (dev server, indexer) cannot be.
+// New photos are copied in first, then the snapshot that refers to them is replaced, and
+// only then are photos no longer referenced removed, so the site never points at a missing file.
+
+/** Windows can briefly lock files (antivirus, search indexer), so file operations are retried. */
+async function retry(operation) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes(error.code) || attempt === 10) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+    }
+  }
+}
+
+async function files(dir, base = dir) {
+  if (!exists(dir)) return [];
+  const out = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...(await files(full, base)));
+    else out.push(path.relative(base, full));
+  }
+  return out;
+}
+
+const fresh = await files(staging);
+for (const relative of fresh) {
+  await mkdir(path.dirname(path.join(MEDIA_DIR, relative)), { recursive: true });
+  await retry(() => copyFile(path.join(staging, relative), path.join(MEDIA_DIR, relative)));
+}
+await retry(() => rename(`${SNAPSHOT}.part`, SNAPSHOT));
+const keep = new Set(fresh);
+for (const relative of await files(MEDIA_DIR)) {
+  if (!keep.has(relative)) await retry(() => unlink(path.join(MEDIA_DIR, relative)));
+}
+await rm(staging, { recursive: true, force: true, maxRetries: 5 });
 
 const count = (key) => `${content.teams[key].players.length} players, ${content.teams[key].news.length} stories`;
 console.log(`Synced from ${url}: men's ${count('mens')}; women's ${count('womens')}; ${content.commercialOptions.length} packages.`);

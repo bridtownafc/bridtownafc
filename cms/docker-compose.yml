@@ -79,7 +79,7 @@ services:
 
       # Email goes to Mailpit only
       EMAIL_TRANSPORT: smtp
-      EMAIL_FROM: cms@bridtownafc.test
+      EMAIL_FROM: cms@example.com
       EMAIL_SMTP_HOST: mailpit
       EMAIL_SMTP_PORT: "1025"
       EMAIL_SMTP_SECURE: "false"

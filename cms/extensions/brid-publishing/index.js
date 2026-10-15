@@ -1,7 +1,7 @@
 // Directus hook: enforces the club's publishing rules (rules.js) on every write and asks
 // the website to rebuild when site content changes. Writes made by Directus itself
 // (no accountability) and by administrators are never blocked.
-import { SITE_COLLECTIONS, URGENT_COLLECTIONS, checkWrite } from './rules.js';
+import { SITE_COLLECTIONS, URGENT_COLLECTIONS, checkFileWrite, checkWrite } from './rules.js';
 
 const ROLE_CACHE_MS = 60_000;
 
@@ -27,7 +27,11 @@ export default ({ filter, action }, { env, logger }) => {
       rolesLoadedAt = Date.now();
     }
     const roleIds = accountability.roles ?? (accountability.role ? [accountability.role] : []);
-    return { admin: accountability.admin === true, roleNames: roleIds.map((id) => roleNames.get(id)).filter(Boolean) };
+    return {
+      id: accountability.user ?? null,
+      admin: accountability.admin === true,
+      roleNames: roleIds.map((id) => roleNames.get(id)).filter(Boolean),
+    };
   }
 
   async function storedItems({ database, schema }, collection, keys) {
@@ -63,6 +67,25 @@ export default ({ filter, action }, { env, logger }) => {
     for (const before of await storedItems(context, collection, keys)) {
       enforce({ action: 'delete', collection, before, after: null, user });
     }
+    return keys;
+  });
+
+  async function enforceFileOwnership(keys, context) {
+    if (!context.accountability) return;
+    const user = await userFrom(context.accountability, context.database);
+    for (const file of await context.database('directus_files').whereIn('id', keys).select('id', 'uploaded_by')) {
+      const reason = checkFileWrite({ file, user });
+      if (reason) throw new PublishingRuleError(reason);
+    }
+  }
+
+  filter('files.update', async (payload, { keys }, context) => {
+    await enforceFileOwnership(keys ?? [], context);
+    return payload;
+  });
+
+  filter('files.delete', async (keys, _meta, context) => {
+    await enforceFileOwnership(keys, context);
     return keys;
   });
 

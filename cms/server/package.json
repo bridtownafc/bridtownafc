@@ -1,0 +1,13 @@
+{
+  "name": "bridtownafc-cms-server",
+  "description": "Local Directus server for the Bridlington Town AFC staff CMS (native Windows setup, see docs/CMS.md)",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "directus": "12.5.0",
+    "pg": "8.16.3"
+  }
+}

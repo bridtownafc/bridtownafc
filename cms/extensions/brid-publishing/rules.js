@@ -59,6 +59,10 @@ export function checkWrite({ action, collection, before, after, user }) {
     }
   }
 
+  if (action === 'delete' && before?.status === PUBLISHED) {
+    return 'This item is live on the website. Archive it, or ask a Club Admin to delete it.';
+  }
+
   const needsApproval = APPROVAL_RULES[collection];
   if (!needsApproval) return null;
 
@@ -72,4 +76,15 @@ export function checkWrite({ action, collection, before, after, user }) {
     return 'Publishing this needs Club Admin approval. Save it as "In review" and a Club Admin will publish it.';
   }
   return null;
+}
+
+/**
+ * Editors may change or delete only the media they uploaded; Club Admins any.
+ * @param {{ file: { uploaded_by?: string|null }, user: { admin: boolean, roleNames: string[], id?: string|null } }} write
+ * @returns {string|null}
+ */
+export function checkFileWrite({ file, user }) {
+  if (user.admin || user.roleNames.some((role) => APPROVER_ROLES.includes(role))) return null;
+  if (file.uploaded_by && file.uploaded_by === user.id) return null;
+  return 'You can only change or delete files you uploaded. Ask a Club Admin for help with this file.';
 }

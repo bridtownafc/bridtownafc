@@ -63,6 +63,22 @@ The rules are enforced twice:
 
 Item-level permission rules are licence-gated in Directus 12, so the extension keeps the approval rules working whatever the licence state. Bootstrap refuses to run if the extension isn't loaded.
 
+### Without a licence key (Core tier)
+Directus 12 **refuses** permissions that contain item rules, validation, presets or a field subset. It returns `403 RESOURCE_RESTRICTED` rather than ignoring them, which was tested on 12.5.0.
+
+In that case bootstrap falls back to collection-level permissions (all fields) and prints a warning. Re-running it after adding a licence key restores the full rules.
+
+| In Core mode | Still enforced? |
+|---|---|
+| Which collections each role can use | Yes |
+| Approvals; the Football and Commercial scope rules | Yes, by the extension |
+| Only approvers delete live items | Yes, by the extension |
+| Editors change only their own uploads | Yes, by the extension |
+| Website sync requests published content and named fields only | Yes |
+| Read limits inside a collection | **No.** Commercial Editors see every page, and the website token could read drafts and internal notes, although the sync never asks for them. |
+| Field limits | **No.** Staff can see colleagues' email addresses. |
+| Version and comment ownership | **No.** |
+
 ## Publishing and matchday updates
 
 - **Normal edits:** batched into one rebuild, at most 60 seconds after the first change.
@@ -70,21 +86,44 @@ Item-level permission rules are licence-gated in Directus 12, so the extension k
 - **Concurrency:** only one build runs at a time. Changes made during a build trigger one more build.
 - **Production:** the listener is replaced by the hosting provider's deploy hook. The CMS (`REBUILD_HOOK_URL`) needs no other change.
 
-## Local setup
+## Local setup (native Windows, no Docker)
 
-Prerequisites: Docker Desktop (WSL 2 backend) and Node 24.
+This needs no administrator rights and installs nothing system-wide. Portable copies of everything go in `%LOCALAPPDATA%\BridTownCMS`, outside the repository:
 
-```sh
-npm run cms:env        # once: creates cms/.env with random secrets (git-ignored, never printed)
-npm run cms:up         # PostgreSQL 17, Directus 12.5, Mailpit; ports bound to 127.0.0.1 only
+| Folder | Contents |
+|---|---|
+| `pgsql\` | PostgreSQL 17.11 (EDB zip binaries) |
+| `node22\` | Node.js 22.23.3, used only to run Directus |
+| `mailpit\` | Mailpit 1.31.5, the local email inbox |
+| `pgdata\` | The database (persistent) |
+| `uploads\` | Media library files (persistent) |
+| `logs\`, `run\` | Service logs and process ids |
+
+- **Why Node 22:** Directus needs `isolated-vm`, which only has prebuilt Windows binaries for Node 22. Building it for Node 24 would need Visual Studio. The website and the CMS scripts keep using your normal Node 24.
+- **Setup steps:** `setup-cms.ps1` downloads each component and checks it against a pinned SHA-256 hash. It then installs Directus into `cms/server/node_modules` from `package-lock.json`, and creates the database cluster with scram-sha-256 password login, listening on 127.0.0.1:5433 only.
+
+```powershell
+npm run cms:setup      # once (re-runnable): portable PostgreSQL/Node 22/Mailpit, Directus, database
+npm run cms:start      # PostgreSQL, Mailpit, Directus; checks every port is bound to 127.0.0.1
 npm run cms:bootstrap  # collections, roles, permissions, website token (re-runnable)
 npm run cms:seed       # imports today's site content, photos and crops (re-runnable)
+npm run cms:status     # which services are running, and on which address
+npm run cms:stop       # stops everything; content is kept
 npm run cms:listen     # rebuild listener (separate terminal)
 npm run build:cms      # manual sync + build from the CMS
 ```
 
-- **Studio:** http://localhost:8055. The initial Super Admin email and password are in `cms/.env`. Set up 2FA straight away.
-- **Data storage:** in Docker volumes `bridtownafc-cms_database` and `bridtownafc-cms_uploads`. `npm run cms:down` keeps them, and `docker compose -f cms/docker-compose.yml down -v` deletes them.
+| Service | Address (this computer only) |
+|---|---|
+| Staff dashboard | http://localhost:8055/admin |
+| Email inbox (Mailpit) | http://localhost:8025 |
+| PostgreSQL | 127.0.0.1:5433, user `directus`, password `DB_PASSWORD` in `cms/.env` |
+
+- **Sign-in:** the initial Super Admin email and password are in `cms/.env` (`ADMIN_EMAIL`, `ADMIN_PASSWORD`). Studio asks for 2FA setup at first sign-in. API logins aren't asked for a code until 2FA is enabled on the account.
+- **Settings:** Directus's settings are in `cms/server/directus-env.mjs`. It binds to 127.0.0.1 explicitly; Directus's default is 0.0.0.0.
+- **Logs:** in `%LOCALAPPDATA%\BridTownCMS\logs`.
+- **Removing everything:** run `npm run cms:stop`, then delete `%LOCALAPPDATA%\BridTownCMS`. That also deletes the local content.
+- **Docker alternative:** `cms/docker-compose.yml` is an equivalent Docker setup for machines that can run Docker. It isn't used on the development PC.
 
 ## Licence (Directus 12, MSCL)
 
@@ -95,6 +134,6 @@ npm run build:cms      # manual sync + build from the CMS
 
 ## Not yet done
 
-- Integration tests against a running Directus: sign-in, 2FA, password reset, the full permission matrix, approvals and versions, uploads, drafts never reaching the build. These are blocked on Docker.
+- Integration tests against the running Directus: 2FA, password reset, the full permission matrix, approvals and versions, uploads, drafts never reaching the build. Sign-in, startup, bootstrap, seed and a build from the CMS are verified. Testing all five roles in the Studio needs more than Core's 3 seats, so it needs the licence key.
 - Website designs for fixtures, tables, sponsors, announcements, events and pages (each needs approval).
 - Production hosting, email (SMTP), backups, monitoring and domain. None are configured.

@@ -9,7 +9,7 @@ import { COLLECTIONS, FOLDERS } from '../schema/collections.mjs';
 import { POLICIES, ROLES, SUPER_ADMIN_ROLE } from '../schema/access.mjs';
 import { DirectusError, loadEnv, login, q, setEnvValue } from './lib/directus.mjs';
 
-const WEBSITE_USER_EMAIL = 'website-build@bridtownafc.test';
+const WEBSITE_USER_EMAIL = 'website-build@example.com';
 const EXTENSION = 'directus-extension-brid-publishing';
 
 const { url, env } = loadEnv();
@@ -84,6 +84,14 @@ for (const [index, team] of [{ key: 'mens', name: "Men's First Team" }, { key: '
 }
 
 console.log('Policies and permissions');
+// Without a licence (Directus Core tier), permissions with item rules, validation, presets or
+// a field subset are refused (403 RESOURCE_RESTRICTED). Then each permission is applied at
+// collection level (all fields); brid-publishing still enforces approvals, role scope,
+// live-item deletes and file ownership, and cms:sync requests published content and named
+// fields only. Re-run after adding a licence key to restore the full rules.
+const isRestricted = (e) => e instanceof DirectusError && e.body?.errors?.some((x) => x.extensions?.code === 'RESOURCE_RESTRICTED');
+const collectionLevel = (p) => ({ ...p, fields: ['*'], permissions: null, validation: null, presets: null });
+let coreMode = false;
 const policyIds = {};
 for (const [name, { permissions, ...flags }] of Object.entries(POLICIES)) {
   const [found] = await api.get('/policies' + q({ filter: { name: { _eq: name } }, fields: 'id' }));
@@ -91,8 +99,19 @@ for (const [name, { permissions, ...flags }] of Object.entries(POLICIES)) {
   policyIds[name] = id;
   const old = await api.get('/permissions' + q({ filter: { policy: { _eq: id } }, fields: 'id', limit: '-1' }));
   if (old.length) await api.del('/permissions', old.map((p) => p.id));
-  await api.post('/permissions', permissions.map((p) => ({ ...p, policy: id })));
-  log(`${name}: ${permissions.length} permissions${flags.enforce_tfa ? ', 2FA required' : ''}${flags.app_access ? '' : ', API only'}`);
+  const rows = permissions.map((p) => ({ ...p, policy: id }));
+  if (!coreMode) {
+    try {
+      await api.post('/permissions', rows);
+    } catch (error) {
+      if (!isRestricted(error)) throw error;
+      coreMode = true;
+    }
+  }
+  if (coreMode) await api.post('/permissions', rows.map(collectionLevel));
+  const ruled = permissions.filter((p) => p.permissions || p.validation || p.presets || p.fields.join() !== '*').length;
+  log(`${name}: ${permissions.length} permissions${coreMode && ruled ? ` (${ruled} without item rules: Core tier)` : ''}` +
+    `${flags.enforce_tfa ? ', 2FA required' : ''}${flags.app_access ? '' : ', API only'}`);
 }
 
 console.log('Roles');
@@ -131,4 +150,16 @@ if (!websiteUser || !env.DIRECTUS_WEBSITE_TOKEN) {
   log('exists; token unchanged');
 }
 
+if (coreMode) {
+  console.warn(`
+WARNING: No licence key, so Directus refused item- and field-level permission rules
+  (Core tier). Applied at collection level instead.
+  Still enforced: which collections each role can use; approvals, role scope, live-item
+  deletes and file ownership (brid-publishing); published-only website sync.
+  NOT enforced until a licence key is added and bootstrap re-run: read limits inside a
+  collection (e.g. Commercial Editors can see non-commercial pages; the website token can
+  read drafts and internal notes, although the sync never requests them), field limits
+  (staff can see colleagues' email addresses), and version/comment ownership.
+  Fine for local testing; production needs the Open Innovation Grant key.`);
+}
 console.log('\nDone. Sign in at http://localhost:8055 and set up 2FA for the Super Admin account.');

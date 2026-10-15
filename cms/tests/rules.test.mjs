@@ -1,7 +1,7 @@
 // Unit tests for the publishing rules. Run: npm run cms:test:rules
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkWrite } from '../extensions/brid-publishing/rules.js';
+import { checkFileWrite, checkWrite } from '../extensions/brid-publishing/rules.js';
 
 const as = (...roleNames) => ({ admin: false, roleNames });
 const superAdmin = { admin: true, roleNames: ['Super Admin'] };
@@ -72,6 +72,26 @@ test('Football Editor publishes football content and only match articles', () =>
   assert.match(create('articles', draft({ category: 'Statement' }), football), /match reports/);
   assert.match(update('articles', live({ category: 'Match report' }), { category: 'Club news' }, football), /match reports/);
   assert.match(update('articles', live({ category: 'Club news' }), { title: 'x' }, football), /match reports/);
+});
+
+test('only approvers delete live content; drafts and archived items can be deleted', () => {
+  for (const role of ['Media Editor', 'Football Editor']) {
+    const collection = role === 'Media Editor' ? 'articles' : 'fixtures';
+    const extra = role === 'Football Editor' ? {} : { category: 'Club news' };
+    assert.match(remove(collection, live(extra), as(role)), /live/);
+    assert.equal(remove(collection, draft(extra), as(role)), null);
+    assert.equal(remove(collection, { status: 'archived', ...extra }, as(role)), null);
+  }
+  assert.equal(remove('league_table_rows', { position: 1 }, as('Football Editor')), null, 'rows have no status');
+  assert.equal(remove('articles', live(), as('Club Admin')), null);
+});
+
+test('editors change only their own uploads', () => {
+  const editor = { admin: false, roleNames: ['Media Editor'], id: 'u1' };
+  assert.equal(checkFileWrite({ file: { uploaded_by: 'u1' }, user: editor }), null);
+  assert.match(checkFileWrite({ file: { uploaded_by: 'u2' }, user: editor }), /you uploaded/);
+  assert.match(checkFileWrite({ file: { uploaded_by: null }, user: editor }), /you uploaded/);
+  assert.equal(checkFileWrite({ file: { uploaded_by: 'u2' }, user: { admin: false, roleNames: ['Club Admin'], id: 'u3' } }), null);
 });
 
 test('roles without a rule are not restricted by the guard (permissions handle them)', () => {

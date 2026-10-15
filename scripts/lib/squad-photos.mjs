@@ -4,6 +4,9 @@
 import path from 'node:path';
 import sharp from 'sharp';
 
+// sharp's cache keeps files open, which stops Windows renaming or deleting their folder.
+sharp.cache(false);
+
 export const WIDTHS = [400, 800, 1200];
 export const RATIO = 5 / 4; // height / width
 
