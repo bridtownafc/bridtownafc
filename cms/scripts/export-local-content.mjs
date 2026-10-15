@@ -4,25 +4,29 @@
 // Usage: node cms/scripts/export-local-content.mjs [output.json]
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { siteContentSchema } from '../../src/lib/cms/schema.ts';
 import { mensFirstTeamPlayers, mensPhotoDir, mensPlaceholderCards, mensTeamNews } from '../../src/data/teams/mens-first-team.ts';
 import { womensFirstTeamPlayers, womensPhotoDir, womensPlaceholderCards, womensTeamNews } from '../../src/data/teams/womens-team.ts';
 import { commercialOptions } from '../../src/data/site.ts';
 
-const output = process.argv[2] ?? 'src/data/cms/content.json';
+export const localContent = () =>
+  siteContentSchema.parse({
+    schemaVersion: 1,
+    source: 'local',
+    generatedAt: new Date().toISOString(),
+    teams: {
+      mens: { photoDir: mensPhotoDir, placeholderCards: mensPlaceholderCards, players: mensFirstTeamPlayers, news: mensTeamNews },
+      womens: { photoDir: womensPhotoDir, placeholderCards: womensPlaceholderCards, players: womensFirstTeamPlayers, news: womensTeamNews },
+    },
+    commercialOptions,
+  });
 
-const content = siteContentSchema.parse({
-  schemaVersion: 1,
-  source: 'local',
-  generatedAt: new Date().toISOString(),
-  teams: {
-    mens: { photoDir: mensPhotoDir, placeholderCards: mensPlaceholderCards, players: mensFirstTeamPlayers, news: mensTeamNews },
-    womens: { photoDir: womensPhotoDir, placeholderCards: womensPlaceholderCards, players: womensFirstTeamPlayers, news: womensTeamNews },
-  },
-  commercialOptions,
-});
-
-await mkdir(path.dirname(output), { recursive: true });
-await writeFile(output, JSON.stringify(content, null, 2) + '\n');
-console.log(`Exported ${content.teams.mens.players.length + content.teams.womens.players.length} players, ` +
-  `${content.teams.mens.news.length + content.teams.womens.news.length} stories and ${content.commercialOptions.length} packages to ${output}`);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const output = process.argv[2] ?? 'src/data/cms/content.json';
+  const content = localContent();
+  await mkdir(path.dirname(output), { recursive: true });
+  await writeFile(output, JSON.stringify(content, null, 2) + '\n');
+  console.log(`Exported ${content.teams.mens.players.length + content.teams.womens.players.length} players, ` +
+    `${content.teams.mens.news.length + content.teams.womens.news.length} stories and ${content.commercialOptions.length} packages to ${output}`);
+}

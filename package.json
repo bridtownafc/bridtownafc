@@ -8,7 +8,17 @@
     "build": "astro check && astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "images:squad": "node scripts/optimise-squad-photos.mjs"
+    "images:squad": "node scripts/optimise-squad-photos.mjs",
+    "build:cms": "node cms/scripts/build-from-cms.mjs",
+    "cms:env": "node cms/scripts/init-env.mjs",
+    "cms:up": "docker compose -f cms/docker-compose.yml up -d --wait",
+    "cms:down": "docker compose -f cms/docker-compose.yml down",
+    "cms:logs": "docker compose -f cms/docker-compose.yml logs -f directus",
+    "cms:bootstrap": "node cms/scripts/bootstrap.mjs",
+    "cms:seed": "node cms/scripts/seed.mjs",
+    "cms:sync": "node cms/scripts/sync.mjs",
+    "cms:listen": "node cms/scripts/rebuild-listener.mjs",
+    "cms:test:rules": "node --test cms/tests/rules.test.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

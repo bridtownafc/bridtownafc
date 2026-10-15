@@ -1,0 +1,97 @@
+# Local development CMS for Bridlington Town AFC. Never used for production.
+# Values come from cms/.env, created by `npm run cms:env` (never committed).
+# Every port is bound to 127.0.0.1, so nothing is reachable from the network.
+name: bridtownafc-cms
+
+services:
+  database:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: directus
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run npm run cms:env}
+      POSTGRES_DB: directus
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "--host=localhost", "--username=directus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Catches every email (password resets, invites) so none leaves this machine.
+  # Inbox: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:8025:8025
+
+  directus:
+    image: directus/directus:12.5.0
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:8055:8055
+    volumes:
+      - uploads:/directus/uploads
+      - ./extensions:/directus/extensions
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8055/server/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      PUBLIC_URL: http://localhost:8055
+      SECRET: ${DIRECTUS_SECRET:?run npm run cms:env}
+      LICENSE_KEY: ${DIRECTUS_LICENSE_KEY:-}
+      TELEMETRY: "false"
+
+      DB_CLIENT: pg
+      DB_HOST: database
+      DB_PORT: "5432"
+      DB_DATABASE: directus
+      DB_USER: directus
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # First start only: creates the initial Super Admin account.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?run npm run cms:env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run npm run cms:env}
+
+      # Sessions and abuse protection
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL: 7d
+      SESSION_COOKIE_TTL: 12h
+      RATE_LIMITER_ENABLED: "true"
+      RATE_LIMITER_STORE: memory
+      RATE_LIMITER_POINTS: "50"
+      RATE_LIMITER_DURATION: "1"
+      CORS_ENABLED: "false"
+      WEBSOCKETS_ENABLED: "false"
+
+      # Uploads: images and PDFs only, 25 MB maximum
+      FILES_MAX_UPLOAD_SIZE: 25mb
+      FILES_MIME_TYPE_ALLOW_LIST: image/jpeg,image/png,image/webp,image/avif,image/svg+xml,application/pdf
+
+      # Email goes to Mailpit only
+      EMAIL_TRANSPORT: smtp
+      EMAIL_FROM: cms@bridtownafc.test
+      EMAIL_SMTP_HOST: mailpit
+      EMAIL_SMTP_PORT: "1025"
+      EMAIL_SMTP_SECURE: "false"
+      EMAIL_SMTP_IGNORE_TLS: "true"
+      PASSWORD_RESET_URL_ALLOW_LIST: http://localhost:8055/admin/reset-password
+      USER_INVITE_URL_ALLOW_LIST: http://localhost:8055/admin/accept-invite
+
+      # Publishing hook (cms/extensions/brid-publishing) calls the local rebuild listener.
+      REBUILD_HOOK_URL: ${REBUILD_HOOK_URL:-http://host.docker.internal:4400/rebuild}
+      REBUILD_HOOK_SECRET: ${REBUILD_HOOK_SECRET:?run npm run cms:env}
+      EXTENSIONS_AUTO_RELOAD: "true"
+
+volumes:
+  database:
+  uploads:
