@@ -1,10 +1,14 @@
-import { mensFirstTeamPlayers, mensPhotoDir } from './mens-first-team';
-import { womensFirstTeamPlayers, womensPhotoDir, womensTeamNews } from './womens-team';
+import { cmsContent, type TeamContent } from '@/lib/cms';
+import { mensFirstTeamPlayers, mensPhotoDir, mensPlaceholderCards, mensTeamNews } from './mens-first-team';
+import { womensFirstTeamPlayers, womensPhotoDir, womensPlaceholderCards, womensTeamNews } from './womens-team';
 import type { LinkTarget, Player, Section, Team, TeamId } from './types';
 
 export type { LinkTarget, Player, Section, Story, Team, TeamId } from './types';
 
 export { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY } from './constants';
+
+/** Squad, photos and news come from the CMS snapshot when the site is built from Directus. */
+const managed = (id: TeamId, local: TeamContent): TeamContent => cmsContent?.teams[id] ?? local;
 
 export const teams: Record<TeamId, Team> = {
   mens: {
@@ -13,29 +17,7 @@ export const teams: Record<TeamId, Team> = {
     name: "Men's First Team",
     phrase: "men's first team",
     basePath: '/mens/',
-    photoDir: mensPhotoDir,
-    players: mensFirstTeamPlayers,
-    placeholderCards: 3,
-    news: [
-      {
-        category: 'Club news',
-        title: 'The next chapter for Bridlington Town AFC',
-        summary: 'A new digital home is being built for supporters, partners and the wider Bridlington community.',
-        link: { section: 'news' },
-      },
-      {
-        category: 'Commercial',
-        title: 'Put your business on the touchline',
-        summary: 'Discover year-round visibility through perimeter advertising at the Hudgell Solicitor Stadium.',
-        link: { shared: '/commercial/' },
-      },
-      {
-        category: 'Community',
-        title: 'More than ninety minutes',
-        summary: 'The club is creating more ways for local people, organisations and supporters to be involved.',
-        link: { shared: '/club/' },
-      },
-    ],
+    ...managed('mens', { photoDir: mensPhotoDir, players: mensFirstTeamPlayers, placeholderCards: mensPlaceholderCards, news: mensTeamNews }),
     home: {
       introduction: 'The official home of the Seasiders. Follow every match, stay close to the club and be part of what comes next.',
     },
@@ -62,10 +44,7 @@ export const teams: Record<TeamId, Team> = {
     name: "Women's First Team",
     phrase: "women's first team",
     basePath: '/womens/',
-    photoDir: womensPhotoDir,
-    players: womensFirstTeamPlayers,
-    placeholderCards: 4,
-    news: womensTeamNews,
+    ...managed('womens', { photoDir: womensPhotoDir, players: womensFirstTeamPlayers, placeholderCards: womensPlaceholderCards, news: womensTeamNews }),
     home: {
       introduction: "The home of Bridlington Town AFC's women's first team. Squad, fixtures and news will appear here as the club confirms them.",
     },

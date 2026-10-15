@@ -5,3 +5,12 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Generated from the CMS at build time (npm run cms:sync)
+src/data/cms/
+public/media/cms/
+.cache/
+
+# Local Directus runtime data
+cms/data/
+cms/uploads/

@@ -2,10 +2,34 @@
 // Only verified information is recorded here: names as supplied by the club and the
 // matching squad photograph. Position, squad number, biography and statistics are
 // intentionally absent until they are supplied and verified.
-import type { Player } from './types';
+import type { Player, Story } from './types';
 
 /** Originals and generated web copies (scripts/optimise-squad-photos.mjs). */
 export const mensPhotoDir = '/assets/teams/mens-first-team/squad';
+
+/** Unnamed "Player to be confirmed" cards shown after the named players. */
+export const mensPlaceholderCards = 3;
+
+export const mensTeamNews: Story[] = [
+  {
+    category: 'Club news',
+    title: 'The next chapter for Bridlington Town AFC',
+    summary: 'A new digital home is being built for supporters, partners and the wider Bridlington community.',
+    link: { section: 'news' },
+  },
+  {
+    category: 'Commercial',
+    title: 'Put your business on the touchline',
+    summary: 'Discover year-round visibility through perimeter advertising at the Hudgell Solicitor Stadium.',
+    link: { shared: '/commercial/' },
+  },
+  {
+    category: 'Community',
+    title: 'More than ninety minutes',
+    summary: 'The club is creating more ways for local people, organisations and supporters to be involved.',
+    link: { shared: '/club/' },
+  },
+];
 
 const redShirt = 'squad portrait in the red club shirt';
 

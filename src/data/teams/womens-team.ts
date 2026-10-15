@@ -11,6 +11,9 @@ import type { Player, Story } from './types';
 
 export const womensPhotoDir = '/assets/teams/womens-first-team/squad';
 
+/** Unnamed "Player to be confirmed" cards shown after the named players. */
+export const womensPlaceholderCards = 4;
+
 export const womensFirstTeamPlayers: Player[] = [
   { slug: 'brooke-stephenson', name: 'Brooke Stephenson' }, // requested EC_6318 — not yet found by the club
   { slug: 'jess-corner', name: 'Jess Corner' }, // EC_6339

@@ -1,4 +1,4 @@
-import { defineConfig } from 'astro/config';
+import { defineConfig, envField } from 'astro/config';
 import { mensFirstTeamPlayers } from './src/data/teams/mens-first-team.ts';
 
 // Earlier public routes were all men's first-team content; keep them working.
@@ -17,4 +17,10 @@ export default defineConfig({
   output: 'static',
   trailingSlash: 'always',
   redirects: legacyRedirects,
+  env: {
+    schema: {
+      // `directus` builds from the snapshot written by `npm run cms:sync` (see docs/CMS.md).
+      CONTENT_SOURCE: envField.enum({ context: 'server', access: 'public', values: ['local', 'directus'], default: 'local' }),
+    },
+  },
 });
