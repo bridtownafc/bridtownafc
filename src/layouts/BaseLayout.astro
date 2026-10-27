@@ -2,6 +2,7 @@
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
 import { sharedContext, type TeamContext } from '@/lib/team-context';
+import { shareImage } from '@/lib/brand';
 import type { Section, TeamId } from '@/data/teams';
 import '@/styles/global.css';
 
@@ -12,26 +13,39 @@ interface Props {
   /** Set on team pages (from the URL). Omit on shared club pages. */
   team?: TeamId;
   section?: Section;
+  /** When the same content lives at more than one address. */
+  canonicalPath?: string;
+  /** Social preview image (site path); the club crest by default. */
+  image?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
 }
 
-const { title, description, team, section } = Astro.props;
+const { title, description, team, section, canonicalPath, image = shareImage, type = 'website', noindex = false } = Astro.props;
 const ctx: TeamContext = team ? { team, shared: false, section } : sharedContext;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+const canonical = new URL(canonicalPath ?? Astro.url.pathname, Astro.site);
+const imageUrl = new URL(image, Astro.site);
 ---
 
 <!doctype html>
 <html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#a81c2c" />
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta property="og:type" content="website" />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content="Bridlington Town AFC" />
+    <meta property="og:locale" content="en_GB" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta name="twitter:card" content="summary" />
+    <link rel="sitemap" href="/sitemap.xml" />
     <title>{title}</title>
     <slot name="head" />
   </head>

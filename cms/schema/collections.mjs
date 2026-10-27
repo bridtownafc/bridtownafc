@@ -102,6 +102,13 @@ export const COLLECTIONS = [
     required('key', { width: 'half', readonly: true, note: 'Used in website addresses (/mens/, /womens/).' }, { is_unique: true }),
     required('name', { width: 'half' }),
     integer('placeholder_cards', { width: 'half', note: '"Player to be confirmed" cards shown after the named players.' }, { default_value: 0, is_nullable: false }),
+    ...['fixtures', 'results', 'table'].map((kind) =>
+      text(`fulltime_${kind}_code`, {
+        width: 'full',
+        note: `FA Full-Time website widget code for ${kind === 'table' ? 'the league table' : kind}: the number in "var lrcode = '…'" from Full-Time's "Code for your website". Leave empty if this team's data comes from another source.`,
+        validation: { [`fulltime_${kind}_code`]: { _regex: '^[0-9]{5,12}$' } },
+        validation_message: 'Numbers only, as shown in the Full-Time code.',
+      })),
     SORT,
   ], { publishable: false }),
 
@@ -157,6 +164,13 @@ export const COLLECTIONS = [
     integer('score_for', { width: 'half', note: 'Bridlington Town goals.' }),
     integer('score_against', { width: 'half' }),
     integer('attendance', { width: 'half' }),
+    text('source_match_id', {
+      width: 'half',
+      note: 'To correct a match imported automatically, enter its id from the Match Centre (e.g. football-web-pages:591448). Leave empty for a match the source does not list.',
+      validation: { source_match_id: { _regex: '^[a-z0-9-]+:[A-Za-z0-9_.-]+$' } },
+      validation_message: 'Copy the id exactly as shown, e.g. football-web-pages:591448.',
+    }),
+    text('public_note', { width: 'half', note: 'Optional note shown with the match, e.g. "Rearranged from 14 November".' }),
     internalNotes(),
   ]),
 
@@ -219,11 +233,11 @@ export const COLLECTIONS = [
     internalNotes(),
   ]),
 
-  collection('sponsorship_packages', { icon: 'sell', display_template: '{{title}} — {{price_label}}', note: 'Publishing or changing a live package needs Club Admin approval.' }, [
+  collection('sponsorship_packages', { icon: 'sell', display_template: '{{title}}', note: 'Publishing or changing a live package needs Club Admin approval.' }, [
     required('title'),
     required('category', { width: 'half', note: 'e.g. Advertising, Matchday' }),
-    required('price_label', { width: 'half', note: 'As shown, e.g. £500 or POA.' }),
-    field('price_amount', 'decimal', { interface: 'input', width: 'half', note: 'Numeric price in pounds, for reporting.' }, { numeric_precision: 10, numeric_scale: 2 }),
+    text('price_label', { width: 'half', note: 'Internal only. Prices are never shown on the website; visitors are asked to contact the club.' }),
+    field('price_amount', 'decimal', { interface: 'input', width: 'half', note: 'Internal only, for reporting. Never shown on the website.' }, { numeric_precision: 10, numeric_scale: 2 }),
     required('detail', { note: 'Short description shown under the title.' }),
     SORT,
   ]),
@@ -251,6 +265,33 @@ export const COLLECTIONS = [
     text('seo_description', { width: 'half' }),
     internalNotes(),
   ]),
+];
+
+// Not publishable and not website content: messages sent through the website's enquiry
+// form. Created only through the enquiry relay (cms/scripts/enquiry-relay.mjs).
+COLLECTIONS.push(
+  collection('enquiries', { icon: 'mail', display_template: '{{topic}}: {{name}}', note: 'Messages from the website enquiry form. Personal data: delete once dealt with (see docs/CMS.md).' }, [
+    select('topic', ['commercial', 'matchday', 'football', 'community', 'general'].map((v) => ({ text: v[0].toUpperCase() + v.slice(1), value: v })), { width: 'half', readonly: true }),
+    select('handling', [{ text: 'New', value: 'new' }, { text: 'In progress', value: 'in_progress' }, { text: 'Done', value: 'done' }], { width: 'half' }, { default_value: 'new' }),
+    text('name', { width: 'half', readonly: true }),
+    text('organisation', { width: 'half', readonly: true }),
+    text('email', { width: 'half', readonly: true }),
+    text('phone', { width: 'half', readonly: true }),
+    longText('message', { readonly: true }),
+    bool('consent', { width: 'half', readonly: true, note: 'Agreed to the club using these details to reply.' }),
+    text('page', { width: 'half', readonly: true, note: 'Website page the form was sent from.' }),
+    internalNotes(),
+  ], { publishable: false }),
+);
+
+/** Changes to existing fields' editor settings (bootstrap otherwise never changes a field). */
+export const FIELD_UPDATES = [
+  // Prices are no longer shown on the website, so they are optional and internal.
+  { collection: 'sponsorship_packages', field: 'price_label', meta: { required: false, note: 'Internal only. Prices are never shown on the website; visitors are asked to contact the club.' }, schema: { is_nullable: true } },
+  { collection: 'sponsorship_packages', field: 'price_amount', meta: { note: 'Internal only, for reporting. Never shown on the website.' } },
+];
+export const COLLECTION_UPDATES = [
+  { collection: 'sponsorship_packages', meta: { display_template: '{{title}}' } },
 ];
 
 export const FOLDERS = ['Squad photos', 'News', 'Sponsors', 'Events', 'Pages', 'Opposition badges'];

@@ -7,7 +7,9 @@ import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { siteContentSchema } from '../../src/lib/cms/schema.ts';
+import sharp from 'sharp';
 import { cropFor, writeVariants } from '../../scripts/lib/squad-photos.mjs';
+import { londonDate } from '../../src/lib/matches/model.ts';
 import { client, loadEnv, q } from './lib/directus.mjs';
 
 const SNAPSHOT = 'src/data/cms/content.json';
@@ -25,8 +27,8 @@ const today = now.slice(0, 10);
 const published = { status: { _eq: 'published' } };
 const all = { limit: '-1' };
 
-const [teams, memberships, articles, packages] = await Promise.all([
-  api.get('/items/teams' + q({ ...all, fields: 'id,key,placeholder_cards', sort: 'sort' })),
+const [teams, memberships, articles, packages, sponsors, settings, fixtures, tables] = await Promise.all([
+  api.get('/items/teams' + q({ ...all, fields: 'id,key,placeholder_cards,fulltime_fixtures_code,fulltime_results_code,fulltime_table_code', sort: 'sort' })),
   api.get('/items/squad_memberships' + q({
     ...all,
     filter: { _and: [published, { kind: { _eq: 'player' } }, { person: published }, { _or: [{ left_on: { _null: true } }, { left_on: { _gt: today } }] }] },
@@ -37,10 +39,31 @@ const [teams, memberships, articles, packages] = await Promise.all([
   api.get('/items/articles' + q({
     ...all,
     filter: { _and: [published, { _or: [{ published_at: { _null: true } }, { published_at: { _lte: now } }] }] },
-    fields: 'title,category,summary,link,team.key',
+    fields: 'title,slug,category,summary,body,link,published_at,date_created,team.key,hero_image_alt,' +
+      'hero_image.id,hero_image.type,hero_image.filename_download,hero_image.modified_on',
     sort: 'sort,-published_at',
   })),
-  api.get('/items/sponsorship_packages' + q({ ...all, filter: published, fields: 'title,category,price_label,detail', sort: 'sort' })),
+  // Prices (price_label, price_amount) are internal and never requested.
+  api.get('/items/sponsorship_packages' + q({ ...all, filter: published, fields: 'title,category,detail', sort: 'sort' })),
+  api.get('/items/sponsors' + q({
+    ...all,
+    filter: { _and: [published, { _or: [{ starts_on: { _null: true } }, { starts_on: { _lte: today } }] }, { _or: [{ ends_on: { _null: true } }, { ends_on: { _gte: today } }] }] },
+    fields: 'name,tier,website_url,description,logo.id,logo.type,logo.filename_download,logo.modified_on',
+    sort: 'sort,name',
+  })),
+  api.get('/items/site_settings' + q({ fields: 'ground_name,address,contact_email,contact_phone,facebook_url,instagram_url,x_url,youtube_url' })),
+  api.get('/items/fixtures' + q({
+    ...all,
+    filter: published,
+    fields: 'id,team.key,competition.name,opponent,venue_type,venue,kickoff,match_status,score_for,score_against,source_match_id,public_note',
+    sort: 'kickoff',
+  })),
+  api.get('/items/league_tables' + q({
+    ...all,
+    filter: published,
+    fields: 'id,team.key,competition.name,season.name,effective_at,source,rows.position,rows.club_name,rows.is_bridlington,rows.played,rows.won,rows.drawn,rows.lost,rows.goals_for,rows.goals_against,rows.points',
+    sort: '-effective_at',
+  })),
 ]);
 
 // --- Squad photos -------------------------------------------------------------------
@@ -75,6 +98,19 @@ async function regionFor(source, file, storedCrop) {
 const staging = '.cache/cms-media-staging';
 await rm(staging, { recursive: true, force: true });
 
+/** Resized copies of a CMS image in staging; returns the website path of the JPEG/PNG (a WebP sits beside it). */
+async function webImage(file, dir, name, { width, keepAlpha = false }) {
+  const source = await original(file);
+  const outDir = path.join(staging, dir);
+  await mkdir(outDir, { recursive: true });
+  const base = sharp(source).rotate().resize({ width, withoutEnlargement: true });
+  const ext = keepAlpha ? 'png' : 'jpg';
+  const encoded = keepAlpha ? base.clone().png({ compressionLevel: 9 }) : base.clone().flatten({ background: '#ffffff' }).jpeg({ quality: 82, mozjpeg: true });
+  const info = await encoded.toFile(path.join(outDir, `${name}.${ext}`));
+  await base.clone().webp({ quality: 82 }).toFile(path.join(outDir, `${name}.webp`));
+  return { src: `${MEDIA_URL}/${dir}/${name}.${ext}`, width: info.width, height: info.height };
+}
+
 const LINKS = { news: { section: 'news' }, matches: { section: 'matches' }, team: { section: 'team' }, club: { shared: '/club/' }, commercial: { shared: '/commercial/' }, contact: { shared: '/contact/' } };
 
 const teamContent = {};
@@ -96,9 +132,81 @@ for (const team of teams) {
     photoDir: `${MEDIA_URL}/squad/${team.key}`,
     placeholderCards: team.placeholder_cards ?? 0,
     players,
-    news: articles
-      .filter((a) => !a.team || a.team.key === team.key)
-      .map((a) => ({ category: a.category, title: a.title, summary: a.summary, link: LINKS[a.link] ?? LINKS.news })),
+    news: [],
+  };
+}
+
+// Articles: a story with a body gets its own page. Images are processed once per article.
+for (const a of articles) {
+  const story = { category: a.category, title: a.title, summary: a.summary, link: LINKS[a.link] ?? LINKS.news };
+  if (a.body?.trim()) {
+    story.slug = a.slug;
+    story.body = a.body;
+    story.publishedAt = new Date(a.published_at ?? a.date_created).toISOString();
+    if (a.hero_image && PHOTO_TYPES.includes(a.hero_image.type)) {
+      story.image = { ...(await webImage(a.hero_image, 'news', a.slug, { width: 1600 })), alt: a.hero_image_alt?.trim() ?? '' };
+    }
+  }
+  for (const team of teams) if (!a.team || a.team.key === team.key) teamContent[team.key].news.push(story);
+}
+
+const sponsorList = [];
+for (const s of sponsors) {
+  const name = s.name.trim();
+  const file = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'sponsor';
+  const logo = s.logo && PHOTO_TYPES.includes(s.logo.type)
+    ? { ...(await webImage(s.logo, 'sponsors', file, { width: 480, keepAlpha: true })), alt: `${name} logo` }
+    : null;
+  const url = /^https?:[/][/]/.test(s.website_url ?? '') ? s.website_url : null;
+  sponsorList.push({ name, tier: s.tier, logo, websiteUrl: url, description: s.description?.trim() || null });
+}
+
+const blank = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+const siteSettings = settings && {
+  groundName: blank(settings.ground_name),
+  address: blank(settings.address),
+  contactEmail: blank(settings.contact_email),
+  contactPhone: blank(settings.contact_phone),
+  social: { facebook: blank(settings.facebook_url), instagram: blank(settings.instagram_url), x: blank(settings.x_url), youtube: blank(settings.youtube_url) },
+};
+
+// Match corrections and club-entered matches; the latest published table per team.
+const STATUS = { scheduled: 'scheduled', live: 'live', full_time: 'finished', postponed: 'postponed', abandoned: 'abandoned', cancelled: 'cancelled' };
+const kindOf = (name = '') => (/friendly/i.test(name) ? 'friendly' : /cup|trophy|vase|shield/i.test(name) ? 'cup' : /league|division/i.test(name) ? 'league' : 'other');
+const matchData = {};
+for (const team of teams) {
+  const overrides = fixtures.filter((f) => f.team?.key === team.key).map((f) => {
+    const scored = Number.isInteger(f.score_for) && Number.isInteger(f.score_against);
+    const kickoff = f.kickoff ? new Date(f.kickoff).toISOString() : null;
+    return {
+      cmsId: f.id,
+      matchId: blank(f.source_match_id),
+      date: kickoff ? londonDate(kickoff) : null,
+      kickoff,
+      competition: f.competition?.name ? { name: f.competition.name, kind: kindOf(f.competition.name) } : null,
+      venueType: f.venue_type ?? null,
+      opponent: blank(f.opponent),
+      venue: blank(f.venue),
+      status: STATUS[f.match_status] ?? null,
+      score: scored ? { for: f.score_for, against: f.score_against } : null,
+      note: blank(f.public_note),
+    };
+  });
+  const table = tables.find((t) => t.team?.key === team.key && t.rows?.length >= 2);
+  matchData[team.key] = {
+    overrides,
+    table: table ? {
+      competition: table.competition?.name ?? 'League table',
+      season: table.season?.name ?? '',
+      effectiveAt: table.effective_at ? new Date(table.effective_at).toISOString() : null,
+      source: blank(table.source),
+      rows: [...table.rows].sort((a, b) => a.position - b.position).map((r) => ({
+        position: r.position, team: r.club_name, played: r.played ?? 0, won: r.won ?? 0, drawn: r.drawn ?? 0, lost: r.lost ?? 0,
+        goalsFor: r.goals_for ?? 0, goalsAgainst: r.goals_against ?? 0, goalDifference: (r.goals_for ?? 0) - (r.goals_against ?? 0),
+        points: r.points ?? 0, isClub: r.is_bridlington === true,
+      })),
+    } : null,
+    fulltimeCodes: { fixtures: team.fulltime_fixtures_code ?? '', results: team.fulltime_results_code ?? '', table: team.fulltime_table_code ?? '' },
   };
 }
 
@@ -107,7 +215,10 @@ const content = siteContentSchema.parse({
   source: 'directus',
   generatedAt: now,
   teams: teamContent,
-  commercialOptions: packages.map((p) => ({ title: p.title, price: p.price_label, detail: p.detail, category: p.category })),
+  commercialOptions: packages.map((p) => ({ title: p.title, detail: p.detail, category: p.category })),
+  sponsors: sponsorList,
+  siteSettings,
+  matchData,
 });
 
 // --- Swap in the new snapshot and photos ---------------------------------------------
@@ -154,4 +265,5 @@ for (const relative of await files(MEDIA_DIR)) {
 await rm(staging, { recursive: true, force: true, maxRetries: 5 });
 
 const count = (key) => `${content.teams[key].players.length} players, ${content.teams[key].news.length} stories`;
-console.log(`Synced from ${url}: men's ${count('mens')}; women's ${count('womens')}; ${content.commercialOptions.length} packages.`);
+console.log(`Synced from ${url}: men's ${count('mens')}; women's ${count('womens')}; ${content.commercialOptions.length} packages; ` +
+  `${sponsorList.length} sponsors; ${fixtures.length} fixture corrections or club-entered matches.`);

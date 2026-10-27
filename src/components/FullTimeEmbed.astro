@@ -1,0 +1,44 @@
+---
+// The FA Full-Time website widget, exactly as Full-Time's "Code for your website" provides
+// it: <div id="lrep{code}">, a global `lrcode` and https://fulltime.thefa.com/client/api/cs1.js.
+// Because `lrcode` is a page-wide variable, each widget runs in its own frame so several can
+// share a page. The data comes straight from Full-Time in the visitor's browser.
+import type { TeamSource } from '@/lib/matches/sources';
+
+interface Props { code: string; title: string; source: TeamSource; }
+const { code, title, source } = Astro.props;
+if (!/^[0-9]{5,12}$/.test(code)) throw new Error(`Invalid FA Full-Time code "${code}"`);
+
+const doc = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<base target="_blank">
+<style>body{margin:0;font:15px/1.5 Inter,Arial,sans-serif;color:#111}#lrep${code}{width:100%!important}table{width:100%;border-collapse:collapse}th,td{padding:8px 6px;border-bottom:1px solid #d7d7d7;text-align:left}th{font-size:12px;text-transform:uppercase;color:#555}a{color:#a81c2c}</style>
+</head><body>
+<div id="lrep${code}" style="width: 350px;">Data loading....<a href="${source.url}">Open ${title.toLowerCase()} on FA Full-Time</a></div>
+<script>var lrcode = '${code}'</script>
+<script src="https://fulltime.thefa.com/client/api/cs1.js"></script>
+</body></html>`;
+---
+<figure class="fulltime">
+  <iframe title={`${title} from FA Full-Time`} srcdoc={doc} loading="lazy" referrerpolicy="strict-origin-when-cross-origin" data-fulltime-frame></iframe>
+  <figcaption>{title} supplied by <a href={source.url} rel="noopener">FA Full-Time</a>. If nothing appears, <a href={source.url} rel="noopener">view it on FA Full-Time</a>.</figcaption>
+</figure>
+<script>
+  // Size each frame to its content (srcdoc frames share this page's origin).
+  for (const frame of document.querySelectorAll<HTMLIFrameElement>('[data-fulltime-frame]')) {
+    const fit = () => {
+      const body = frame.contentDocument?.body;
+      if (body) frame.style.height = `${Math.max(160, body.scrollHeight + 8)}px`;
+    };
+    frame.addEventListener('load', () => {
+      fit();
+      const body = frame.contentDocument?.body;
+      if (body) new ResizeObserver(fit).observe(body);
+    });
+  }
+</script>
+<style>
+  .fulltime { margin: 0; }
+  .fulltime iframe { display: block; width: 100%; min-height: 160px; border: 0; background: #fff; }
+  .fulltime figcaption { margin-top: .5rem; color: var(--muted); font-size: .82rem; }
+  .fulltime a { color: var(--red); font-weight: 700; }
+</style>

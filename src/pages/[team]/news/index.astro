@@ -2,7 +2,8 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
 import EmptyState from '@/components/EmptyState.astro';
-import { TEAM_IDS, linkFor, teams, type TeamId } from '@/data/teams';
+import StoryCard from '@/components/StoryCard.astro';
+import { TEAM_IDS, teams, type TeamId } from '@/data/teams';
 
 export function getStaticPaths() {
   return TEAM_IDS.map((team) => ({ params: { team } }));
@@ -10,20 +11,50 @@ export function getStaticPaths() {
 
 const teamId = Astro.params.team as TeamId;
 const team = teams[teamId];
+const categories = [...new Set(team.news.map((s) => s.category))];
 ---
-<BaseLayout team={teamId} section="news" title={`News | ${team.name} | Bridlington Town AFC`} description={`The latest Bridlington Town AFC ${team.phrase} news.`}>
+<BaseLayout team={teamId} section="news" title={`News | ${team.name} | Bridlington Town AFC`} description={`The latest Bridlington Town AFC ${team.phrase} news, match reports and club updates.`}>
   <PageHero eyebrow={team.name} title={`${team.label} News`} introduction={team.newsPage.introduction} />
   <section class="section"><div class="shell">
     {team.news.length > 0
       ? <>
-          <div class="filters"><button class="active">All</button><button>Club news</button><button>Match reports</button><button>Commercial</button><button>Community</button></div>
-          <div class="grid-3">{team.news.map((story) => <article class="card"><span class="label">{story.category}</span><h3>{story.title}</h3><p>{story.summary}</p><a class="card-link" href={linkFor(teamId, story.link)}>Read story →</a></article>)}</div>
+          {categories.length > 1 && (
+            <div class="filters" role="group" aria-label="Show news by category" data-news-filters hidden>
+              <button type="button" aria-pressed="true" data-category="">All</button>
+              {categories.map((c) => <button type="button" aria-pressed="false" data-category={c}>{c}</button>)}
+            </div>
+          )}
+          <p class="visually-hidden" role="status" aria-live="polite" data-news-status></p>
+          <div class="grid-3 news-grid">{team.news.map((story) => <div data-news-category={story.category}><StoryCard team={teamId} story={story} headingLevel="h2" /></div>)}</div>
         </>
       : <EmptyState title={team.newsPage.emptyTitle} text={team.newsPage.emptyText} />}
   </div></section>
 </BaseLayout>
+<script>
+  const group = document.querySelector<HTMLElement>('[data-news-filters]');
+  if (group) {
+    group.hidden = false;
+    const status = document.querySelector<HTMLElement>('[data-news-status]');
+    const items = [...document.querySelectorAll<HTMLElement>('[data-news-category]')];
+    group.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-category]');
+      if (!button) return;
+      const category = button.dataset.category ?? '';
+      for (const b of group.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === button));
+      let shown = 0;
+      for (const item of items) {
+        const visible = !category || item.dataset.newsCategory === category;
+        item.hidden = !visible;
+        if (visible) shown++;
+      }
+      if (status) status.textContent = `Showing ${shown} ${shown === 1 ? 'story' : 'stories'}${category ? ` in ${category}` : ''}.`;
+    });
+  }
+</script>
 <style>
-  .filters { display: flex; overflow-x: auto; margin-bottom: 2rem; gap: .5rem; }
-  .filters button { padding: .6rem .9rem; border: 1px solid var(--line); background: #fff; font-weight: 700; white-space: nowrap; }
-  .filters .active { border-color: var(--red); color: #fff; background: var(--red); }
+  .filters { display: flex; flex-wrap: wrap; margin-bottom: 2rem; gap: .5rem; }
+  .filters button { min-height: 44px; padding: .6rem .9rem; border: 1px solid #8a8a8a; background: #fff; color: var(--ink); font: 700 .95rem var(--body); cursor: pointer; }
+  .filters button[aria-pressed='true'] { border-color: var(--red); color: #fff; background: var(--red); }
+  .filters button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .news-grid > div { display: grid; }
 </style>

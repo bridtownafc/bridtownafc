@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "team": "mens",
+  "season": "2026/27",
+  "source": {
+    "provider": "football-web-pages",
+    "name": "Football Web Pages",
+    "method": "api",
+    "url": "https://www.footballwebpages.co.uk/bridlington-town",
+    "attribution": "Fixtures, results and table supplied by Football Web Pages"
+  },
+  "sync": {
+    "status": "not-configured",
+    "lastAttemptAt": null,
+    "lastSuccessAt": null,
+    "lastError": null,
+    "consecutiveFailures": 0
+  },
+  "matches": [],
+  "table": null
+}

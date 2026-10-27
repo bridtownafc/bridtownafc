@@ -1,0 +1,32 @@
+---
+// Where a team's match data comes from, when it was last updated, and a clear notice if
+// the latest update failed. Never claims live scores.
+import { stamp } from '@/lib/matches/format';
+import type { TeamMatches } from '@/lib/matches';
+
+interface Props { data: TeamMatches; tone?: 'light' | 'dark'; }
+const { data, tone = 'light' } = Astro.props;
+const { snapshot, source, stale } = data;
+const lastSuccess = snapshot.sync.lastSuccessAt;
+---
+<div class:list={['data-source', tone]}>
+  {source.method === 'embed'
+    ? <p>Fixtures, results and table are shown directly from <a href={source.url} rel="noopener">{source.name}</a>, the FA's official competition system, and update when the league publishes changes.</p>
+    : lastSuccess
+      ? <p>{source.attribution}. <a href={source.url} rel="noopener">View at {source.name}</a>. Last updated {stamp(lastSuccess)} (UK time). Results appear once the competition confirms them; this is not a live score service.</p>
+      : <p>Fixtures, results and the league table will be imported automatically from <a href={source.url} rel="noopener">{source.name}</a> once the club's data connection is switched on.</p>}
+  {stale && (
+    <p class="stale" role="status">
+      <strong>These details may be out of date.</strong> The latest update from {source.name} did not complete{lastSuccess ? `, so this page shows the information as it was at ${stamp(lastSuccess)}` : ''}. Please check <a href={source.url} rel="noopener">{source.name}</a> for the latest.
+    </p>
+  )}
+</div>
+<style>
+  .data-source { font-size: .85rem; color: var(--muted); }
+  .data-source p { margin: 0 0 .5rem; }
+  .data-source a { color: var(--red); font-weight: 700; text-underline-offset: 3px; }
+  .data-source.dark { color: #cfcfcf; }
+  .data-source.dark a { color: #ff8591; }
+  .stale { padding: .75rem 1rem; border-left: 4px solid #e0a100; color: var(--ink); background: #fff6db; }
+  .data-source.dark .stale { color: var(--ink); }
+</style>

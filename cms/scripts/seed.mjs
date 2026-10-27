@@ -86,10 +86,8 @@ for (const [teamKey, team] of Object.entries(content.teams)) {
 
 for (const [index, option] of content.commercialOptions.entries()) {
   if (await findOne('sponsorship_packages', { title: { _eq: option.title } })) continue;
-  const amount = Number(option.price.replace(/[^0-9.]/g, ''));
   await api.post('/items/sponsorship_packages', {
-    status: 'published', title: option.title, category: option.category, price_label: option.price,
-    price_amount: Number.isFinite(amount) && amount > 0 ? amount : null, detail: option.detail, sort: index + 1,
+    status: 'published', title: option.title, category: option.category, detail: option.detail, sort: index + 1,
   });
   log(`+ package: ${option.title}`);
 }

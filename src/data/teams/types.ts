@@ -25,6 +25,11 @@ export interface Story {
   title: string;
   summary: string;
   link: LinkTarget;
+  /** Full articles (from the CMS) have a slug and a Markdown body, and get their own page. */
+  slug?: string;
+  body?: string;
+  publishedAt?: string;
+  image?: { src: string; alt: string; width: number; height: number };
 }
 
 export interface Team {
@@ -43,6 +48,6 @@ export interface Team {
   news: Story[];
   home: { introduction: string };
   squad: { introduction: string; emptyTitle: string; emptyText: string };
-  matches: { introduction: string; statusTitle: string; statusText: string; hasMatchCentre: boolean };
+  matches: { introduction: string };
   newsPage: { introduction: string; emptyTitle: string; emptyText: string };
 }

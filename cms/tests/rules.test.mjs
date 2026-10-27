@@ -1,7 +1,7 @@
 // Unit tests for the publishing rules. Run: npm run cms:test:rules
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkFileWrite, checkWrite } from '../extensions/brid-publishing/rules.js';
+import { checkFileWrite, checkWrite, scopeQuery } from '../extensions/brid-publishing/rules.js';
 
 const as = (...roleNames) => ({ admin: false, roleNames });
 const superAdmin = { admin: true, roleNames: ['Super Admin'] };
@@ -97,4 +97,28 @@ test('editors change only their own uploads', () => {
 test('roles without a rule are not restricted by the guard (permissions handle them)', () => {
   assert.equal(create('fixtures', live(), as('Media Editor')), null);
   assert.equal(create('directus_files', {}, as()), null);
+});
+
+// --- Read limits (brid-publishing items.query), independent of licence tier --------------------
+
+const commercial = { admin: false, roleNames: ['Commercial Editor'] };
+const website = { admin: false, roleNames: ['Website'] };
+
+test('Commercial Editors only read commercial enquiries, combined with their own filter', () => {
+  const q = scopeQuery({ collection: 'enquiries', query: { filter: { handling: { _eq: 'new' } }, limit: 10 }, user: commercial });
+  assert.deepEqual(q, { filter: { _and: [{ handling: { _eq: 'new' } }, { topic: { _eq: 'commercial' } }] }, limit: 10 });
+});
+
+test('the website token reads published items only, and articles only once due', () => {
+  assert.deepEqual(scopeQuery({ collection: 'fixtures', query: {}, user: website }).filter, { _and: [{ status: { _eq: 'published' } }] });
+  const articles = scopeQuery({ collection: 'articles', query: {}, user: website, now: '2026-10-27T09:00:00.000Z' }).filter;
+  assert.deepEqual(articles._and[0]._and[1], { _or: [{ published_at: { _null: true } }, { published_at: { _lte: '2026-10-27T09:00:00.000Z' } }] });
+  assert.deepEqual(scopeQuery({ collection: 'league_table_rows', query: {}, user: website }).filter, { _and: [{ league_table: { status: { _eq: 'published' } } }] });
+});
+
+test('Club Admins and administrators are not limited; other collections are unchanged', () => {
+  const query = { filter: { id: { _eq: 1 } } };
+  assert.equal(scopeQuery({ collection: 'enquiries', query, user: { admin: false, roleNames: ['Club Admin'] } }), query);
+  assert.equal(scopeQuery({ collection: 'enquiries', query, user: { admin: true, roleNames: [] } }), query);
+  assert.equal(scopeQuery({ collection: 'articles', query, user: commercial }), query);
 });

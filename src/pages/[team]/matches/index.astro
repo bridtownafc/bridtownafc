@@ -2,7 +2,13 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
 import EmptyState from '@/components/EmptyState.astro';
+import MatchList from '@/components/MatchList.astro';
+import LeagueTable from '@/components/LeagueTable.astro';
+import FullTimeEmbed from '@/components/FullTimeEmbed.astro';
+import DataSource from '@/components/DataSource.astro';
+import { TICKETED_TEAMS, TICKETS_URL } from '@/data/club';
 import { TEAM_IDS, teams, type TeamId } from '@/data/teams';
+import { teamMatches } from '@/lib/matches';
 
 export function getStaticPaths() {
   return TEAM_IDS.map((team) => ({ params: { team } }));
@@ -10,33 +16,66 @@ export function getStaticPaths() {
 
 const teamId = Astro.params.team as TeamId;
 const team = teams[teamId];
-const live = team.matches.hasMatchCentre;
+const data = teamMatches(teamId);
+const embed = data.embedCodes;
+const season = data.snapshot.season;
+const sells = TICKETED_TEAMS.includes(teamId);
 ---
-<BaseLayout team={teamId} section="matches" title={`Match Centre | ${team.name} | Bridlington Town AFC`} description={`Bridlington Town AFC ${team.phrase} fixtures, results and league information.`}>
-  <PageHero eyebrow={team.name} title="Match Centre" introduction={team.matches.introduction} />
-  <section class="section">
+<BaseLayout team={teamId} section="matches" title={`Fixtures, Results and Table | ${team.name} | Bridlington Town AFC`} description={`Bridlington Town AFC ${team.phrase} fixtures, results and league table for the ${season} season, with kick-off times in UK time.`}>
+  <PageHero eyebrow={`${team.name} · ${season}`} title="Match Centre" introduction={team.matches.introduction} />
+  <section class="section match-centre-page">
     <div class="shell">
-      <div class="match-nav" aria-label="Match centre sections"><a class="active" href="#fixtures">Fixtures</a><a href="#results">Results</a><a href="#table">League table</a></div>
-      {live
-        ? <div id="fixtures" class="data-state">
-            <p class="eyebrow">2026/27 season</p><h2>{team.matches.statusTitle}</h2>
-            <p>{team.matches.statusText}</p>
+      <nav class="match-nav" aria-label="Match Centre sections"><a href="#fixtures">Fixtures</a><a href="#results">Results</a><a href="#table">League table</a></nav>
+      <DataSource data={data} />
+      {sells && (
+        <aside class="tickets-note" aria-label="Tickets">
+          <p><strong>Home match tickets</strong> are sold through the club's official ticket website.</p>
+          <a class="button" href={TICKETS_URL} rel="noopener">Buy tickets</a>
+        </aside>
+      )}
+
+      <section id="fixtures" class="block" aria-labelledby="fixtures-title">
+        <h2 id="fixtures-title">Fixtures</h2>
+        {embed?.fixtures
+          ? <FullTimeEmbed code={embed.fixtures} title="Fixtures" source={data.source} />
+          : data.fixtures.length
+            ? <MatchList matches={data.fixtures} team={teamId} kind="fixtures" />
+            : <EmptyState headingLevel="h3" title="No fixtures to show" text={data.snapshot.sync.lastSuccessAt ? `There are no upcoming ${team.phrase} fixtures published by ${data.source.name} at the moment.` : `${team.name} fixtures will appear here once the club's data connection to ${data.source.name} is in place.`} />}
+      </section>
+
+      <section id="results" class="block" aria-labelledby="results-title">
+        <h2 id="results-title">Results</h2>
+        {embed?.results
+          ? <FullTimeEmbed code={embed.results} title="Results" source={data.source} />
+          : data.results.length
+            ? <MatchList matches={data.results} team={teamId} kind="results" />
+            : <EmptyState headingLevel="h3" title="No results to show" text={data.snapshot.sync.lastSuccessAt ? `No ${team.phrase} results have been confirmed for ${season} yet.` : `Confirmed ${team.phrase} results will appear here once the club's data connection to ${data.source.name} is in place.`} />}
+        {data.other.length > 0 && (
+          <div class="other">
+            <h3>Cancelled, abandoned or void</h3>
+            <MatchList matches={data.other} team={teamId} kind="other" />
           </div>
-        : <div id="fixtures" class="empty-block"><EmptyState tone="dark" eyebrow={team.name} title={team.matches.statusTitle} text={team.matches.statusText} /></div>}
-      <div class="grid-3 match-features">
-        <div class="card"><span class="label">Fixtures</span><h3>Plan ahead</h3><p>Kick-off, venue, competition and matchday information presented clearly for home and away fixtures.</p></div>
-        <div class="card" id="results"><span class="label">Results</span><h3>{live ? 'Every result' : 'No results yet'}</h3><p>{live ? 'Scores, reports, line-ups, scorers, cards, attendance and player of the match.' : `Results for the ${team.phrase} will appear here once confirmed.`}</p></div>
-        <div class="card" id="table"><span class="label">Table</span><h3>{live ? 'Follow the season' : 'League to be confirmed'}</h3><p>{live ? 'League position, form, goal difference and points from an approved source.' : `League details for the ${team.phrase} will be added once the competition is confirmed.`}</p></div>
-      </div>
+        )}
+      </section>
+
+      <section id="table" class="block" aria-labelledby="table-title">
+        <h2 id="table-title">League table</h2>
+        {embed?.table
+          ? <FullTimeEmbed code={embed.table} title="League table" source={data.source} />
+          : data.table
+            ? <LeagueTable table={data.table} />
+            : <EmptyState headingLevel="h3" title="Table not available yet" text={`The ${data.source.league ?? 'league'} table for the ${team.phrase} will appear here once it is available from ${data.source.name}.`} />}
+      </section>
     </div>
   </section>
 </BaseLayout>
 <style>
-  .match-nav { display: flex; overflow-x: auto; margin-bottom: 2rem; border-bottom: 1px solid var(--line); gap: 2rem; }
+  .match-nav { position: sticky; top: 0; z-index: 5; display: flex; overflow-x: auto; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); gap: 2rem; background: #fff; }
   .match-nav a { padding: .9rem 0; font: 800 1.15rem var(--display); text-decoration: none; text-transform: uppercase; white-space: nowrap; }
-  .match-nav .active { border-bottom: 4px solid var(--red); color: var(--red); }
-  .data-state { max-width: 780px; margin-bottom: 3rem; padding: clamp(2rem, 6vw, 4rem); color: #fff; background: var(--ink); }
-  .data-state h2 { font-size: clamp(3rem, 6vw, 5rem); }
-  .empty-block { margin-bottom: 3rem; }
-  .match-features { margin-top: 2rem; }
+  .match-nav a:hover, .match-nav a:focus-visible { color: var(--red); box-shadow: inset 0 -4px 0 var(--red); }
+  .tickets-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.5rem 0 0; padding: 1rem 1.25rem; border-left: 5px solid var(--red); background: var(--mist); }
+  .tickets-note p { margin: 0; }
+  .block { padding-top: 3rem; scroll-margin-top: 4rem; }
+  .block h2 { font-size: clamp(2.2rem, 5vw, 3.6rem); }
+  .other { margin-top: 2.5rem; }
 </style>

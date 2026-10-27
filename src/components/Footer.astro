@@ -1,42 +1,67 @@
 ---
+import Logo from '@/components/Logo.astro';
+import SocialLinks from '@/components/SocialLinks.astro';
+import { TICKETS_URL, club, telHref } from '@/data/club';
 import { teamLink, teamText, type TeamContext } from '@/lib/team-context';
 
 interface Props { ctx: TeamContext; }
 const { ctx } = Astro.props;
-const squadLabel = teamText(ctx, { mens: "Men's first team", womens: "Women's team" });
+const squadLabel = teamText(ctx, { mens: "Men's first team squad", womens: "Women's first team squad" });
 ---
 <footer class="site-footer">
   <div class="shell footer-grid">
     <div>
-      <img class="footer-badge" src="/assets/brand/brid-town-badge-black.png" alt="Bridlington Town AFC badge" width="1323" height="1189" loading="lazy" />
+      <Logo tone="dark" alt="Bridlington Town AFC club crest" sizes="105px" class="footer-badge" />
       <div class="footer-brand">Bridlington Town AFC</div>
       <p>Football at the heart of the Bridlington community.</p>
+      <address class="footer-contact">{club.address}<br /><a href={telHref(club.contactPhone)}>{club.contactPhone}</a>{club.contactEmail && <><br /><a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></>}</address>
     </div>
     <div>
       <h2>Matchday</h2>
-      <a {...teamLink(ctx, { section: 'matches' })}>Fixtures & results</a>
-      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Directions & admission</a>
+      <a {...teamLink(ctx, { section: 'matches' })}>Fixtures and results</a>
+      <a href={TICKETS_URL} rel="noopener">Buy tickets</a>
+      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Getting here</a>
+      <a {...teamLink(ctx, { shared: '/club/', hash: 'accessibility' })}>Accessibility</a>
     </div>
     <div>
       <h2>Club</h2>
       <a {...teamLink(ctx, { section: 'team' })} {...squadLabel.attrs}>{squadLabel.text}</a>
+      <a {...teamLink(ctx, { section: 'news' })}>News</a>
       <a {...teamLink(ctx, { shared: '/club/' })}>About the club</a>
-      <a {...teamLink(ctx, { shared: '/contact/' })}>Contact</a>
     </div>
     <div>
       <h2>Partners</h2>
-      <a {...teamLink(ctx, { shared: '/commercial/' })}>Commercial opportunities</a>
+      <a {...teamLink(ctx, { shared: '/commercial/' })}>Sponsorship and advertising</a>
       <a {...teamLink(ctx, { shared: '/commercial/', hash: 'enquire' })}>Partner with us</a>
     </div>
     <div>
-      <h2>Information</h2>
-      <a {...teamLink(ctx, { shared: '/club/' })}>Policies</a>
-      <a {...teamLink(ctx, { shared: '/club/', hash: 'matchday' })}>Accessibility</a>
+      <h2>Contact</h2>
       <a {...teamLink(ctx, { shared: '/contact/' })}>Contact the club</a>
+      <a {...teamLink(ctx, { shared: '/contact/', hash: 'enquire' })}>Send an enquiry</a>
+      <SocialLinks />
     </div>
   </div>
   <div class="shell footer-bottom">
     <span>© {new Date().getFullYear()} Bridlington Town AFC</span>
-    <span>Website V1 — local development build</span>
+    <a class="league-partner" href="https://www.thenpl.co.uk/" rel="noopener">
+      <picture>
+        <source type="image/webp" srcset="/assets/partners/pitching-in-npl-400.webp 400w, /assets/partners/pitching-in-npl-800.webp 800w" sizes="(max-width: 560px) min(100vw - 2rem, 340px), 340px" />
+        <img src="/assets/partners/pitching-in-npl-400.png" srcset="/assets/partners/pitching-in-npl-400.png 400w, /assets/partners/pitching-in-npl-800.png 800w" sizes="(max-width: 560px) min(100vw - 2rem, 340px), 340px" alt="Pitching In, partners with Northern Premier League: visit the Northern Premier League website" width="800" height="77" loading="lazy" decoding="async" />
+      </picture>
+    </a>
+    <span>The official website of Bridlington Town AFC</span>
   </div>
 </footer>
+<style>
+  .footer-contact { margin-top: 1rem; font-size: .9rem; font-style: normal; }
+  .footer-bottom { align-items: center; }
+  .site-footer .league-partner { display: block; flex: 0 1 340px; margin: 0; line-height: 0; }
+  .league-partner img { width: 100%; height: auto; }
+  .league-partner:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  .league-partner:hover img { opacity: .9; }
+  @media (min-width: 561px) and (max-width: 900px) { .site-footer .league-partner { flex-basis: 250px; } }
+  @media (max-width: 560px) { .site-footer .league-partner { width: min(100%, 340px); flex-basis: auto; } }
+  .footer-contact a { display: inline; }
+  .site-footer :global(.social-links) { grid-template-columns: 1fr; margin-top: 1rem; background: none; gap: .25rem; }
+  .site-footer :global(.social-links a) { display: block; min-height: 0; padding: 0; background: none; font: inherit; text-transform: none; }
+</style>

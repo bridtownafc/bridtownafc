@@ -1,0 +1,126 @@
+---
+// Enquiry form. Posts to the enquiry relay (cms/scripts/enquiry-relay.mjs), which stores the
+// message in the CMS for club staff. Works without JavaScript (the relay redirects back with
+// ?enquiry=sent); with JavaScript the result is shown in place. When no relay address is
+// configured the form is not shown, so visitors never meet a form that cannot send.
+import { PUBLIC_ENQUIRY_ENDPOINT } from 'astro:env/client';
+import { club, telHref } from '@/data/club';
+
+const TOPICS = { commercial: 'Sponsorship and advertising', matchday: 'Matchday and tickets', football: 'Football and teams', community: 'Community', general: 'Something else' } as const;
+interface Props {
+  topic?: keyof typeof TOPICS;
+  /** Links carrying this attribute pre-fill the message with its value when clicked. */
+  subjectFrom?: string;
+}
+const { topic = 'general', subjectFrom } = Astro.props;
+const id = `enquiry-${topic}`;
+---
+{PUBLIC_ENQUIRY_ENDPOINT
+  ? (
+    <form class="enquiry-form" id={id} method="post" action={PUBLIC_ENQUIRY_ENDPOINT} data-enquiry-form data-subject-from={subjectFrom} novalidate>
+      <div class="status" role="status" aria-live="polite" tabindex="-1" data-status hidden></div>
+      <div class="field"><label for={`${id}-topic`}>What is it about?</label>
+        <select id={`${id}-topic`} name="topic" required>
+          {Object.entries(TOPICS).map(([value, label]) => <option value={value} selected={value === topic}>{label}</option>)}
+        </select>
+      </div>
+      <div class="pair">
+        <div class="field"><label for={`${id}-name`}>Your name <span aria-hidden="true">*</span></label><input id={`${id}-name`} name="name" autocomplete="name" required maxlength="120" /></div>
+        <div class="field"><label for={`${id}-organisation`}>Business or organisation</label><input id={`${id}-organisation`} name="organisation" autocomplete="organization" maxlength="160" /></div>
+      </div>
+      <div class="pair">
+        <div class="field"><label for={`${id}-email`}>Email address <span aria-hidden="true">*</span></label><input id={`${id}-email`} name="email" type="email" autocomplete="email" required maxlength="200" /></div>
+        <div class="field"><label for={`${id}-phone`}>Phone number</label><input id={`${id}-phone`} name="phone" type="tel" autocomplete="tel" maxlength="40" /></div>
+      </div>
+      <div class="field"><label for={`${id}-message`}>Message <span aria-hidden="true">*</span></label><textarea id={`${id}-message`} name="message" rows="6" required minlength="10" maxlength="5000"></textarea></div>
+      <div class="field check"><input id={`${id}-consent`} name="consent" type="checkbox" value="yes" required /><label for={`${id}-consent`}>I agree to Bridlington Town AFC using these details to reply to my enquiry. <span aria-hidden="true">*</span></label></div>
+      {/* Spam trap: hidden from people, filled in by bots. */}
+      <div class="trap" aria-hidden="true"><label for={`${id}-website`}>Leave this empty</label><input id={`${id}-website`} name="website" tabindex="-1" autocomplete="off" /></div>
+      <input type="hidden" name="return" value={Astro.url.pathname} />
+      <input type="hidden" name="started" value="" data-started />
+      <p class="required-note"><span aria-hidden="true">*</span> Required</p>
+      <button class="button" type="submit">Send enquiry</button>
+    </form>
+  )
+  : (
+    <div class="enquiry-offline">
+      <p>To make an enquiry, call the club on <a href={telHref(club.contactPhone)}>{club.contactPhone}</a>{club.contactEmail && <> or email <a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></>}.</p>
+    </div>
+  )}
+
+<script>
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-enquiry-form]')) {
+    const status = form.querySelector<HTMLElement>('[data-status]')!;
+    const started = form.querySelector<HTMLInputElement>('[data-started]')!;
+    started.value = String(Date.now());
+    const show = (text: string, ok: boolean) => {
+      status.hidden = false;
+      status.textContent = text;
+      status.className = `status ${ok ? 'ok' : 'error'}`;
+      status.focus?.();
+    };
+    if (new URLSearchParams(location.search).get('enquiry') === 'sent') show('Thank you. Your enquiry has been sent and the club will be in touch.', true);
+    if (new URLSearchParams(location.search).get('enquiry') === 'error') show('Sorry, your enquiry could not be sent. Please check the form and try again, or call the club.', false);
+
+    const attr = form.dataset.subjectFrom;
+    if (attr) {
+      for (const link of document.querySelectorAll<HTMLElement>(`[${attr}]`)) {
+        link.addEventListener('click', () => {
+          const message = form.querySelector<HTMLTextAreaElement>('textarea[name="message"]')!;
+          const subject = link.getAttribute(attr) ?? '';
+          if (!message.value.trim()) message.value = `${subject}\n\n`;
+          setTimeout(() => form.querySelector<HTMLInputElement>('input[name="name"]')?.focus(), 0);
+        });
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      button.disabled = true;
+      button.textContent = 'Sending…';
+      try {
+        const response = await fetch(form.action, { method: 'POST', body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>), headers: { accept: 'application/json' } });
+        const body = await response.json().catch(() => ({}));
+        if (response.ok) {
+          form.reset();
+          started.value = String(Date.now());
+          show('Thank you. Your enquiry has been sent and the club will be in touch.', true);
+        } else {
+          show(body.error ?? 'Sorry, your enquiry could not be sent. Please try again, or call the club.', false);
+        }
+      } catch {
+        show('Sorry, your enquiry could not be sent because the connection failed. Please try again, or call the club.', false);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Send enquiry';
+      }
+    });
+  }
+</script>
+<style>
+  .enquiry-form { display: grid; gap: 1rem; padding: clamp(1.25rem, 4vw, 2rem); border-top: 5px solid var(--red); background: #fff; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .field { display: grid; gap: .35rem; }
+  label { font-weight: 700; }
+  input, select, textarea { width: 100%; min-height: 46px; padding: .6rem .75rem; border: 1px solid #8a8a8a; border-radius: 0; background: #fff; color: var(--ink); font: inherit; }
+  textarea { resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--red); outline-offset: 1px; border-color: var(--ink); }
+  .check { grid-template-columns: auto 1fr; align-items: start; gap: .75rem; }
+  .check input { width: 22px; min-height: 22px; height: 22px; margin-top: .15rem; accent-color: var(--red); }
+  .check label { font-weight: 400; }
+  .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  .required-note { margin: 0; color: var(--muted); font-size: .85rem; }
+  .button { justify-self: start; cursor: pointer; }
+  .button:disabled { opacity: .7; cursor: progress; }
+  .status { padding: .85rem 1rem; border-left: 5px solid; font-weight: 700; }
+  .status.ok { border-color: #1d7a3a; background: #e8f5ec; }
+  .status.error { border-color: var(--red); background: #fdecee; }
+  .enquiry-offline { padding: 1.5rem; border-top: 5px solid var(--red); background: #fff; }
+  .enquiry-offline a { color: var(--red); font-weight: 800; }
+  @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
+</style>

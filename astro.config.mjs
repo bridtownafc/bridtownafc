@@ -34,6 +34,8 @@ export default defineConfig({
     schema: {
       // `directus` builds from the snapshot written by `npm run cms:sync` (see docs/CMS.md).
       CONTENT_SOURCE: envField.enum({ context: 'server', access: 'public', values: ['local', 'directus'], default: 'local' }),
+      // Address of the enquiry relay (cms/scripts/enquiry-relay.mjs). Without it, forms show the club's phone number instead.
+      PUBLIC_ENQUIRY_ENDPOINT: envField.string({ context: 'client', access: 'public', optional: true, url: true }),
     },
   },
 });

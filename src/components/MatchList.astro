@@ -1,0 +1,97 @@
+---
+// Fixtures or results for one team, grouped by month.
+import { TICKETED_TEAMS, TICKETS_URL } from '@/data/club';
+import type { TeamId } from '@/data/teams';
+import { isAwaitingResult, outcome, BUILT_AT, type Match } from '@/lib/matches';
+import { homeAwayScore, kickOff, matchDate, STATUS_LABELS } from '@/lib/matches/format';
+
+interface Props { matches: Match[]; team: TeamId; kind: 'fixtures' | 'results' | 'other'; }
+const { matches, team, kind } = Astro.props;
+
+const monthFormat = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const groups = new Map<string, Match[]>();
+for (const m of matches) {
+  const key = monthFormat.format(new Date(`${m.date}T12:00:00Z`));
+  groups.set(key, [...(groups.get(key) ?? []), m]);
+}
+const sell = TICKETED_TEAMS.includes(team);
+const OUTCOME = { win: 'W', draw: 'D', loss: 'L' } as const;
+const OUTCOME_LABEL = { win: 'Won', draw: 'Drew', loss: 'Lost' } as const;
+---
+{[...groups].map(([month, list]) => (
+  <section class="month" aria-label={month}>
+    <h3>{month}</h3>
+    <ol class="match-list" role="list">
+      {list.map((m) => {
+        const result = outcome(m);
+        const awaiting = isAwaitingResult(m, BUILT_AT);
+        const home = m.venueType !== 'away';
+        return (
+          <li class:list={['match-row', m.status !== 'scheduled' && m.status !== 'finished' && `is-${m.status}`]} id={`match-${m.id.replace(/[^A-Za-z0-9-]/g, '-')}`}>
+            <div class="when"><strong>{matchDate(m)}</strong><span>{kind === 'results' ? '' : kickOff(m)}</span></div>
+            <div class="what">
+              <span class="comp">{m.competition.name}</span>
+              <span class="fixture">
+                {home ? <><strong>Bridlington Town</strong> v {m.opponent}</> : <>{m.opponent} v <strong>Bridlington Town</strong></>}
+              </span>
+              <span class="where">{m.venueType === 'home' ? 'Home' : m.venueType === 'away' ? 'Away' : 'Neutral venue'}{m.venue ? `, ${m.venue}` : ''}</span>
+              {(m.note || m.override) && <span class="note">{[m.note, m.override && 'Updated by the club.'].filter(Boolean).join(' ')}</span>}
+              {m.provider !== 'club' && <span class="ref">Ref {m.id}</span>}
+            </div>
+            <div class="status">
+              {kind === 'results' && result && (
+                <>
+                  <span class:list={['outcome', result]} title={OUTCOME_LABEL[result]}><span aria-hidden="true">{OUTCOME[result]}</span><span class="visually-hidden">{OUTCOME_LABEL[result]}</span></span>
+                  <span class="score">{homeAwayScore(m)}</span>
+                  {m.penalties && <small>{m.penalties.for}-{m.penalties.against} on penalties</small>}
+                  {m.status === 'awarded' && <small>Result awarded</small>}
+                </>
+              )}
+              {kind !== 'results' && (
+                m.status === 'scheduled' && awaiting ? <span class="badge pending">Awaiting result</span>
+                : m.status === 'scheduled' ? (sell && m.venueType === 'home'
+                    ? <a class="ticket-link" href={TICKETS_URL} rel="noopener">Buy tickets<span class="visually-hidden"> for Bridlington Town v {m.opponent} (club ticket website)</span></a>
+                    : null)
+                : <span class:list={['badge', m.status]}>{STATUS_LABELS[m.status]}{m.status === 'postponed' ? ', new date to be confirmed' : ''}</span>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+))}
+<style>
+  .month + .month { margin-top: 2rem; }
+  .month h3 { margin-bottom: .75rem; font-size: 1.4rem; }
+  .match-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .match-row { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 1rem; padding: 1rem .25rem; border-bottom: 1px solid var(--line); }
+  .when { display: grid; }
+  .when strong { font-family: var(--display); font-size: 1.15rem; text-transform: uppercase; }
+  .when span { color: var(--muted); font-size: .85rem; }
+  .what { display: grid; gap: .1rem; min-width: 0; }
+  .comp { color: var(--red); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .fixture { font-size: 1.05rem; }
+  .where, .note { color: var(--muted); font-size: .85rem; }
+  .note { font-style: italic; }
+  .ref { color: var(--muted); font-size: .72rem; }
+  .status { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: .5rem; text-align: right; }
+  .status small { flex-basis: 100%; color: var(--muted); }
+  .score { font: 900 1.8rem/1 var(--display); }
+  .outcome { display: inline-grid; width: 28px; height: 28px; place-items: center; color: #fff; font: 800 .9rem var(--display); }
+  .outcome.win { background: #1d7a3a; }
+  .outcome.draw { background: #5d5d5d; }
+  .outcome.loss { background: var(--red); }
+  .badge { padding: .3rem .55rem; border: 1px solid var(--line); font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+  .badge.postponed, .badge.cancelled, .badge.abandoned, .badge.void { border-color: var(--red); color: var(--red); }
+  .badge.live { border-color: var(--red); color: #fff; background: var(--red); }
+  .badge.pending { color: var(--muted); }
+  .is-postponed .fixture, .is-cancelled .fixture, .is-void .fixture { text-decoration: line-through; text-decoration-color: rgba(168, 28, 44, .6); }
+  .ticket-link { padding: .5rem .75rem; color: #fff; background: var(--red); font: 800 .95rem var(--display); text-decoration: none; text-transform: uppercase; white-space: nowrap; }
+  .ticket-link:hover { background: var(--red-dark); }
+  .ticket-link:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  @media (max-width: 640px) {
+    .match-row { grid-template-columns: 1fr auto; }
+    .when { grid-column: 1 / -1; display: flex; gap: .75rem; align-items: baseline; }
+  }
+</style>

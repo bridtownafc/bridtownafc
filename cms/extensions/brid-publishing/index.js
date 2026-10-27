@@ -1,7 +1,7 @@
 // Directus hook: enforces the club's publishing rules (rules.js) on every write and asks
 // the website to rebuild when site content changes. Writes made by Directus itself
 // (no accountability) and by administrators are never blocked.
-import { SITE_COLLECTIONS, URGENT_COLLECTIONS, checkFileWrite, checkWrite } from './rules.js';
+import { SITE_COLLECTIONS, URGENT_COLLECTIONS, checkFileWrite, checkWrite, scopeQuery } from './rules.js';
 
 const ROLE_CACHE_MS = 60_000;
 
@@ -43,6 +43,13 @@ export default ({ filter, action }, { env, logger }) => {
     const reason = checkWrite(write);
     if (reason) throw new PublishingRuleError(reason);
   }
+
+  // Read limits inside a collection (e.g. Commercial Editors see commercial enquiries only).
+  filter('items.query', async (query, { collection }, context) => {
+    if (!context.accountability) return query;
+    const user = await userFrom(context.accountability, context.database);
+    return scopeQuery({ collection, query, user });
+  });
 
   filter('items.create', async (payload, { collection }, context) => {
     if (!context.accountability || !SITE_COLLECTIONS.includes(collection)) return payload;

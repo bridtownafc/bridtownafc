@@ -6,7 +6,7 @@ import { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY, sectionHref, teams } from '@/
 // Explicit team URLs (/mens/, /womens/) never consult the remembered choice.
 const homes = Object.fromEntries(TEAM_IDS.map((id) => [id, sectionHref(id, 'home')]));
 ---
-<BaseLayout title="Bridlington Town AFC | Official Website" description="The official home of Bridlington Town AFC — choose the men's first team or women's team for fixtures, results, news and squad information.">
+<BaseLayout title="Bridlington Town AFC | Official Website" description="The official home of Bridlington Town AFC. Choose the men's first team or the women's first team for fixtures, results, news and squad information.">
   <Fragment slot="head">
     <script is:inline define:vars={{ storageKey: TEAM_STORAGE_KEY, homes, defaultTeam: DEFAULT_TEAM }}>
       var remembered = null;

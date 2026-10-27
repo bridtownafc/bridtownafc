@@ -39,6 +39,7 @@ export const POLICIES = {
     permissions: [
       ...[...CONTENT_COLLECTIONS, ...REFERENCE_COLLECTIONS].flatMap((c) => allow(c, CRUD)),
       ...allow('site_settings', ['create', 'read', 'update']),
+      ...allow('enquiries', ['read', 'update', 'delete']),
       ...allow('directus_files', CRUD),
       ...allow('directus_folders', CRUD),
       ...allow('directus_versions', CRUD),
@@ -125,6 +126,19 @@ export const POLICIES = {
         validation: { _and: [{ area: { _eq: 'commercial' } }, unpublished] },
       }),
       ...allow('pages', ['delete'], { filter: { _and: [{ area: { _eq: 'commercial' } }, unpublished] } }),
+      // Commercial enquiries from the website form; other topics are for Club Admins.
+      ...allow('enquiries', ['read', 'update'], { filter: { topic: { _eq: 'commercial' } }, fields: ['id', 'topic', 'handling', 'name', 'organisation', 'email', 'phone', 'message', 'consent', 'page', 'internal_notes', 'date_created'] }),
+    ],
+  },
+
+  'Enquiry form': {
+    description: 'API-only account used by the website enquiry relay. Can only create enquiries; cannot read anything.',
+    icon: 'mail',
+    app_access: false,
+    admin_access: false,
+    enforce_tfa: false,
+    permissions: [
+      ...allow('enquiries', ['create'], { fields: ['topic', 'name', 'organisation', 'email', 'phone', 'message', 'consent', 'page'], presets: { handling: 'new' } }),
     ],
   },
 
@@ -140,7 +154,7 @@ export const POLICIES = {
       ...allow('competitions', ['read'], { filter: { status: { _eq: 'published' } } }),
       ...allow('people', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'display_name', 'slug', 'photo', 'photo_description', 'photo_crop', 'biography'] }),
       ...allow('squad_memberships', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'person', 'season', 'kind', 'shirt_number', 'position', 'staff_title', 'left_on', 'sort'] }),
-      ...allow('fixtures', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'competition', 'season', 'opponent', 'opponent_badge', 'venue_type', 'venue', 'kickoff', 'match_status', 'score_for', 'score_against', 'attendance'] }),
+      ...allow('fixtures', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'competition', 'season', 'opponent', 'opponent_badge', 'venue_type', 'venue', 'kickoff', 'match_status', 'score_for', 'score_against', 'attendance', 'source_match_id', 'public_note'] }),
       ...allow('league_tables', ['read'], { filter: { status: { _eq: 'published' } } }),
       ...allow('league_table_rows', ['read'], { filter: { league_table: { status: { _eq: 'published' } } } }),
       ...allow('articles', ['read'], { filter: { _and: [{ status: { _eq: 'published' } }, { _or: [{ published_at: { _null: true } }, { published_at: { _lte: '$NOW' } }] }] } }),
@@ -162,6 +176,7 @@ export const ROLES = {
   'Football Editor': { icon: 'sports_soccer', description: 'Squads, fixtures, results and match reports.', policies: ['Staff editor', 'Football Editor'] },
   'Commercial Editor': { icon: 'handshake', description: 'Sponsors and commercial content, with Club Admin approval.', policies: ['Staff editor', 'Commercial Editor'] },
   'Website': { icon: 'public', description: 'API-only account used by the website build. Not a person.', policies: ['Website build'] },
+  'Enquiry form': { icon: 'mail', description: 'API-only account used by the website enquiry form. Not a person.', policies: ['Enquiry form'] },
 };
 
 export const SUPER_ADMIN_ROLE = 'Super Admin';

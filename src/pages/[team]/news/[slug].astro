@@ -1,0 +1,58 @@
+---
+// Full article pages, for CMS stories that have a body. A club-wide story appears under both teams;
+// its canonical address is the men's team's, so search engines see one copy.
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { TEAM_IDS, linkFor, sectionHref, teams, type Story, type TeamId } from '@/data/teams';
+
+export async function getStaticPaths() {
+  return TEAM_IDS.flatMap((team) =>
+    teams[team].news.filter((s) => s.slug && s.body).map((story) => ({ params: { team, slug: story.slug }, props: { teamId: team, story } })),
+  );
+}
+
+interface Props { teamId: TeamId; story: Story; }
+const { teamId, story } = Astro.props;
+const team = teams[teamId];
+// Raw HTML in an article is shown as text, never run: only Markdown formatting is applied.
+const processor = await createMarkdownProcessor({ syntaxHighlight: false });
+const { code: html } = await processor.render((story.body ?? '').replace(/</g, '&lt;'));
+const date = story.publishedAt ? new Date(story.publishedAt) : null;
+const canonicalTeam = TEAM_IDS.find((id) => teams[id].news.some((s) => s.slug === story.slug)) ?? teamId;
+const webp = story.image?.src.replace(/\.(jpe?g|png)$/i, '.webp');
+---
+<BaseLayout team={teamId} section="news" title={`${story.title} | Bridlington Town AFC`} description={story.summary} canonicalPath={`${sectionHref(canonicalTeam, 'news')}${story.slug}/`} image={story.image?.src} type="article">
+  <article class="article">
+    <header class="article-head red-surface"><div class="shell narrow">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href={sectionHref(teamId, 'news')}>{team.label} news</a> <span aria-hidden="true">/</span> <span>{story.category}</span></nav>
+      <h1>{story.title}</h1>
+      <p class="standfirst">{story.summary}</p>
+      {date && <p class="date"><time datetime={story.publishedAt}>{date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' })}</time></p>}
+    </div></header>
+    {story.image && (
+      <picture class="article-image shell narrow">
+        <source type="image/webp" srcset={webp} />
+        <img src={story.image.src} alt={story.image.alt} width={story.image.width} height={story.image.height} decoding="async" fetchpriority="high" />
+      </picture>
+    )}
+    <div class="shell narrow body" set:html={html} />
+    <div class="shell narrow back"><a class="button outline" href={sectionHref(teamId, 'news')}><span aria-hidden="true">←</span>&nbsp;All {team.label.toLowerCase()} news</a>{story.link && 'shared' in story.link && <a class="text-link" href={linkFor(teamId, story.link)}>Related page <span aria-hidden="true">→</span></a>}</div>
+  </article>
+</BaseLayout>
+<style>
+  .article-head { padding: clamp(3rem, 7vw, 5rem) 0; }
+  .article-head h1 { font-size: clamp(2.8rem, 7vw, 5.5rem); }
+  .breadcrumbs { margin-bottom: 1.25rem; font-size: .85rem; }
+  .standfirst { font-size: 1.25rem; }
+  .date { margin: 0; color: #f6d9dc; font-weight: 700; }
+  .article-image { display: block; margin-top: 2rem; }
+  .article-image img { width: 100%; height: auto; }
+  .body { padding-block: 2.5rem; font-size: 1.1rem; }
+  .body :global(h2) { margin-top: 2rem; font-size: 2.2rem; }
+  .body :global(h3) { margin-top: 1.5rem; }
+  .body :global(a) { color: var(--red); font-weight: 700; }
+  .body :global(blockquote) { margin: 1.5rem 0; padding-left: 1.25rem; border-left: 5px solid var(--red); font-size: 1.25rem; }
+  .body :global(img) { height: auto; }
+  .back { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding-bottom: 4rem; }
+  .text-link { color: var(--red); font-weight: 800; }
+</style>

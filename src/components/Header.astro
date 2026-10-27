@@ -1,5 +1,7 @@
 ---
 import TeamSwitch from '@/components/TeamSwitch.astro';
+import Logo from '@/components/Logo.astro';
+import { TICKETS_URL } from '@/data/club';
 import { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY, primaryNavigation } from '@/data/teams';
 import { teamLink, type TeamContext } from '@/lib/team-context';
 
@@ -24,7 +26,7 @@ const currentFor = (item: (typeof primaryNavigation)[number]) => {
   </div>
   <div class="shell header-main">
     <a class="brand" {...teamLink(ctx, { section: 'home' })} aria-label="Bridlington Town AFC home">
-      <img class="brand-badge" src="/assets/brand/brid-town-badge-black.png" alt="Bridlington Town AFC badge" width="1323" height="1189" />
+      <Logo tone="dark" alt="" sizes="(max-width: 480px) 42px, (max-width: 560px) 48px, 60px" class="brand-badge" eager />
       <span>
         <strong>Bridlington Town</strong>
         <small>Association Football Club</small>
@@ -36,13 +38,13 @@ const currentFor = (item: (typeof primaryNavigation)[number]) => {
         {primaryNavigation.map((item) => (
           <li><a {...teamLink(ctx, item.target)} aria-current={currentFor(item)}>{item.label}</a></li>
         ))}
+        <li class="menu-tickets"><a href={TICKETS_URL} rel="noopener">Buy tickets</a></li>
       </ul>
     </nav>
     <div class="header-tools">
       <TeamSwitch ctx={ctx} />
       <div class="header-actions">
-        <a class="header-commercial" {...teamLink(ctx, { shared: '/commercial/' })}>Commercial</a>
-        <a class="header-tickets" {...teamLink(ctx, { section: 'matches' })}>Tickets</a>
+        <a class="header-tickets" href={TICKETS_URL} rel="noopener">Tickets</a>
       </div>
     </div>
   </div>
@@ -51,10 +53,17 @@ const currentFor = (item: (typeof primaryNavigation)[number]) => {
 <script>
   const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
   const menu = document.querySelector<HTMLElement>('#primary-menu');
-  toggle?.addEventListener('click', () => {
-    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!isOpen));
-    menu?.classList.toggle('is-open', !isOpen);
+  const setOpen = (open: boolean) => {
+    toggle?.setAttribute('aria-expanded', String(open));
+    menu?.classList.toggle('is-open', open);
+  };
+  toggle?.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+  // Escape closes the mobile menu and returns focus to its button.
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && toggle?.getAttribute('aria-expanded') === 'true') {
+      setOpen(false);
+      toggle.focus();
+    }
   });
 </script>
 
@@ -103,9 +112,14 @@ const currentFor = (item: (typeof primaryNavigation)[number]) => {
 
 <style>
   .header-tools { display: flex; align-items: center; gap: 1rem; }
+  .menu-tickets { display: none; }
   @media (max-width: 1180px) and (min-width: 851px) {
     .header-main { gap: 1.25rem; }
-    .header-commercial { display: none; }
+    .primary-menu { gap: 1rem; }
+  }
+  @media (max-width: 850px) {
+    .menu-tickets { display: block; margin-top: .5rem; }
+    .menu-tickets a { display: inline-block; padding: .5rem .9rem !important; color: #fff; background: var(--red); }
   }
   @media (max-width: 850px) {
     .header-main { gap: .75rem; }
@@ -117,7 +131,7 @@ const currentFor = (item: (typeof primaryNavigation)[number]) => {
   @media (max-width: 480px) {
     .header-main { gap: .5rem; }
     .brand { gap: .5rem; min-width: 0; }
-    .brand-badge { width: 42px; height: 42px; }
+    .brand :global(.brand-badge) { width: 42px; height: 42px; }
     .brand strong { font-size: 1.1rem; }
     .menu-toggle { padding: .55rem .7rem; }
   }

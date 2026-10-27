@@ -1,36 +1,74 @@
 ---
+// Next match or latest result for a team, from its synced match data. Shows an honest
+// empty state when the source has nothing yet; never a made-up fixture.
+import Logo from '@/components/Logo.astro';
+import { TICKETED_TEAMS, TICKETS_URL } from '@/data/club';
 import { sectionHref, type TeamId } from '@/data/teams';
+import { kickOff, matchDate, STATUS_LABELS } from '@/lib/matches/format';
+import { teamMatches } from '@/lib/matches';
 
 interface Props { type: 'next' | 'result'; team: TeamId; }
 const { type, team } = Astro.props;
+const data = teamMatches(team);
 const isNext = type === 'next';
+const match = isNext ? data.next : data.latest;
+const home = match?.venueType !== 'away';
+const sides = match ? (home ? ['Bridlington Town', match.opponent] : [match.opponent, 'Bridlington Town']) : [];
+const goals = match?.score ? (home ? [match.score.for, match.score.against] : [match.score.against, match.score.for]) : null;
+const tickets = isNext && match && match.venueType === 'home' && match.status === 'scheduled' && TICKETED_TEAMS.includes(team);
+const matchesHref = sectionHref(team, 'matches');
+const emptyText = data.embedCodes
+  ? `See the Match Centre for ${isNext ? 'fixtures' : 'results'} from ${data.source.name}.`
+  : isNext ? 'The next fixture will appear here once it is published by the competition.' : 'The latest result will appear here once it is confirmed by the competition.';
 ---
 <article class:list={['fixture-card', !isNext && 'result-card']}>
-  <header><span>{isNext ? 'Next match' : 'Latest result'}</span><small>Official data pending</small></header>
-  <div class="fixture-meta"><span>Competition TBC</span><span>Date TBC</span></div>
-  <div class="teams">
-    <div class="team home"><img src="/assets/brand/brid-town-badge-black.png" alt="" width="1323" height="1189" /><strong>Bridlington Town</strong></div>
-    <div class="score" aria-label={isNext ? 'Kick-off time to be confirmed' : 'Score to be confirmed'}>{isNext ? 'TBC' : '–'}</div>
-    <div class="team"><span class="opponent-badge" aria-hidden="true">?</span><strong>Opponent TBC</strong></div>
-  </div>
-  <div class="fixture-detail"><span>Venue TBC</span><span>{isNext ? 'Kick-off TBC' : 'Match report pending'}</span></div>
-  <a class="fixture-action" href={sectionHref(team, isNext ? 'matches' : 'news')}>{isNext ? 'Match information' : 'Match report'} <span aria-hidden="true">→</span></a>
+  <header><span>{isNext ? 'Next match' : 'Latest result'}</span>{match && <small>{match.competition.name}</small>}</header>
+  {match ? (
+    <>
+      <div class="fixture-meta"><span>{matchDate(match)}</span><span>{match.status === 'live' ? STATUS_LABELS.live : home ? 'Home' : match.venueType === 'away' ? 'Away' : 'Neutral venue'}</span></div>
+      <div class="teams">
+        <div class="team">{home ? <Logo tone="dark" alt="" sizes="68px" /> : <span class="opponent-badge" aria-hidden="true">{sides[0].slice(0, 1)}</span>}<strong>{sides[0]}</strong></div>
+        <div class="score">
+          {goals
+            ? <span aria-label={`${sides[0]} ${goals[0]}, ${sides[1]} ${goals[1]}`}>{goals[0]}-{goals[1]}</span>
+            : <span aria-label={`Kick-off ${kickOff(match)}`}>{kickOff(match)}</span>}
+        </div>
+        <div class="team">{home ? <span class="opponent-badge" aria-hidden="true">{sides[1].slice(0, 1)}</span> : <Logo tone="dark" alt="" sizes="68px" />}<strong>{sides[1]}</strong></div>
+      </div>
+      <div class="fixture-detail"><span>{match.venue ?? (home ? 'Home' : 'Away')}</span><span>{isNext ? (match.status === 'live' ? 'In progress' : `Kick-off ${kickOff(match)}`) : STATUS_LABELS[match.status]}{match.penalties ? `, ${match.penalties.for}-${match.penalties.against} on penalties` : ''}</span></div>
+      <div class="fixture-actions">
+        <a class="fixture-action" href={`${matchesHref}#${isNext ? 'fixtures' : 'results'}`}>{isNext ? 'All fixtures' : 'All results'} <span aria-hidden="true">→</span></a>
+        {tickets && <a class="fixture-action tickets" href={TICKETS_URL} rel="noopener">Buy tickets <span class="visually-hidden">(club ticket website)</span></a>}
+      </div>
+    </>
+  ) : (
+    <div class="fixture-empty">
+      <p>{emptyText}</p>
+      <a class="fixture-action" href={matchesHref}>Match Centre <span aria-hidden="true">→</span></a>
+    </div>
+  )}
 </article>
 
 <style>
-  .fixture-card { overflow: hidden; border: 1px solid #333; background: #161616; }
+  .fixture-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #333; background: #161616; }
   .fixture-card header { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; color: #fff; background: var(--red); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-  .fixture-card header small { opacity: .8; }
+  .fixture-card header small { text-align: right; opacity: .9; }
   .result-card header { color: var(--ink); background: #fff; }
-  .fixture-meta, .fixture-detail { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 1.25rem; color: #aaa; font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+  .fixture-meta, .fixture-detail { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 1.25rem; color: #c4c4c4; font-size: .75rem; font-weight: 700; text-transform: uppercase; }
   .fixture-meta { border-bottom: 1px solid #333; }
   .fixture-detail { border-top: 1px solid #333; }
-  .teams { display: grid; grid-template-columns: 1fr 74px 1fr; align-items: center; gap: .75rem; padding: 1.5rem 1rem; color: #fff; }
+  .teams { display: grid; grid-template-columns: 1fr 84px 1fr; align-items: center; gap: .75rem; padding: 1.5rem 1rem; color: #fff; }
   .team { display: grid; justify-items: center; gap: .65rem; text-align: center; }
-  .team img, .opponent-badge { width: 68px; height: 68px; object-fit: contain; }
-  .opponent-badge { display: grid; place-items: center; border: 2px solid #555; color: #777; font: 900 1.6rem var(--display); }
+  .team :global(img), .opponent-badge { width: 68px; height: 68px; object-fit: contain; }
+  .opponent-badge { display: grid; place-items: center; border: 2px solid #555; border-radius: 50%; color: #ddd; font: 900 1.8rem var(--display); }
   .team strong { font-family: var(--display); font-size: 1.25rem; line-height: 1; text-transform: uppercase; }
   .score { color: #fff; font: 900 2rem var(--display); text-align: center; }
-  .fixture-action { display: flex; justify-content: space-between; padding: 1rem 1.25rem; color: #fff; background: #252525; font-family: var(--display); font-weight: 800; text-decoration: none; text-transform: uppercase; }
-  @media(max-width: 420px) { .teams { grid-template-columns: 1fr 50px 1fr; } .team img, .opponent-badge { width: 52px; height: 52px; } }
+  .fixture-actions { display: flex; margin-top: auto; }
+  .fixture-action { display: flex; flex: 1; justify-content: space-between; gap: .5rem; padding: 1rem 1.25rem; color: #fff; background: #252525; font-family: var(--display); font-weight: 800; text-decoration: none; text-transform: uppercase; }
+  .fixture-action:hover, .fixture-action:focus-visible { background: #303030; }
+  .fixture-action.tickets { flex: 0 0 auto; justify-content: center; background: var(--red); }
+  .fixture-action.tickets:hover { background: var(--red-dark); }
+  .fixture-empty { display: flex; flex: 1; flex-direction: column; justify-content: space-between; }
+  .fixture-empty p { margin: 0; padding: 1.5rem 1.25rem; color: #d7d7d7; }
+  @media (max-width: 420px) { .teams { grid-template-columns: 1fr 64px 1fr; } .team :global(img), .opponent-badge { width: 52px; height: 52px; } .score { font-size: 1.6rem; } }
 </style>

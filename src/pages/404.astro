@@ -1,0 +1,23 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { TICKETS_URL } from '@/data/club';
+---
+<BaseLayout title="Page not found | Bridlington Town AFC" description="The page you were looking for could not be found." noindex>
+  <section class="section"><div class="shell narrow">
+    <p class="eyebrow">Error 404</p>
+    <h1>Page not found</h1>
+    <p class="lead">Sorry, that page does not exist or has moved. These might help:</p>
+    <ul class="links" role="list">
+      <li><a href="/mens/">Men's first team</a></li>
+      <li><a href="/womens/">Women's first team</a></li>
+      <li><a href="/mens/matches/">Fixtures and results</a></li>
+      <li><a href={TICKETS_URL} rel="noopener">Buy tickets</a></li>
+      <li><a href="/contact/">Contact the club</a></li>
+    </ul>
+  </div></section>
+</BaseLayout>
+<style>
+  .lead { font-size: 1.2rem; }
+  .links { display: grid; gap: .5rem; padding: 0; list-style: none; }
+  .links a { color: var(--red); font: 800 1.4rem var(--display); text-transform: uppercase; }
+</style>

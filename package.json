@@ -20,11 +20,24 @@
     "cms:sync": "node cms/scripts/sync.mjs",
     "cms:listen": "node cms/scripts/rebuild-listener.mjs",
     "cms:test:rules": "node --test cms/tests/rules.test.mjs",
-    "cms:test:photo": "node cms/tests/photo-change.integration.mjs"
+    "cms:test:photo": "node cms/tests/photo-change.integration.mjs",
+    "test": "node --test \"tests/*.test.mjs\" \"cms/tests/*.test.mjs\"",
+    "test:matches": "node --test tests/matches.test.mjs",
+    "test:enquiry": "node --test tests/enquiry.test.mjs",
+    "images:logo": "node scripts/make-logo-variants.mjs",
+    "matches:sync": "node scripts/matches/sync.mjs",
+    "matches:watch": "node scripts/matches/scheduler.mjs",
+    "matches:discover": "node scripts/matches/discover.mjs",
+    "cms:enquiries": "node cms/scripts/enquiry-relay.mjs",
+    "cms:admin": "node cms/scripts/admin-session.mjs",
+    "cms:test:workflow": "node cms/scripts/admin-session.mjs workflow",
+    "images:partners": "node scripts/make-partner-logos.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
+    "@astrojs/markdown-remark": "^6.3.11",
     "astro": "^5.13.5",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.2"
   }
 }

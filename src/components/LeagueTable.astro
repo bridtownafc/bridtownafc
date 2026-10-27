@@ -1,0 +1,68 @@
+---
+// A league table. `around` shows only the rows near Bridlington Town (homepage preview).
+import Logo from '@/components/Logo.astro';
+import type { LeagueTable } from '@/lib/matches';
+import { stamp } from '@/lib/matches/format';
+
+interface Props { table: LeagueTable; around?: number; tone?: 'light' | 'dark'; caption?: boolean; }
+const { table, around, tone = 'light', caption = true } = Astro.props;
+const clubIndex = table.rows.findIndex((r) => r.isClub);
+const rows = around === undefined ? table.rows : (() => {
+  const start = Math.max(0, Math.min(clubIndex - around, table.rows.length - (around * 2 + 1)));
+  return table.rows.slice(start, start + around * 2 + 1);
+})();
+const compact = around !== undefined;
+const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
+---
+<div class:list={['table-wrap', tone]} tabindex="0" role="region" aria-label={`${table.competition} table`}>
+  <table>
+    {caption && (
+      <caption>
+        {table.competition} {table.season}.
+        {table.automatic
+          ? <> From {table.sourceName}, updated {stamp(table.retrievedAt)}.</>
+          : <> Entered by the club{table.effectiveAt ? `, correct at ${stamp(table.effectiveAt)}` : ''}. Not updated automatically.{table.notes ? ` Source: ${table.notes}.` : ''}</>}
+      </caption>
+    )}
+    <thead>
+      <tr>
+        <th scope="col"><abbr title="Position">Pos</abbr></th>
+        <th scope="col" class="team-col">Team</th>
+        <th scope="col"><abbr title="Played">P</abbr></th>
+        {!compact && <><th scope="col"><abbr title="Won">W</abbr></th><th scope="col"><abbr title="Drawn">D</abbr></th><th scope="col"><abbr title="Lost">L</abbr></th><th scope="col"><abbr title="Goals for">F</abbr></th><th scope="col"><abbr title="Goals against">A</abbr></th></>}
+        <th scope="col"><abbr title="Goal difference">GD</abbr></th>
+        <th scope="col"><abbr title="Points">Pts</abbr></th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r) => (
+        <tr class:list={[r.isClub && 'club']} aria-current={r.isClub ? 'true' : undefined}>
+          <td>{r.position}</td>
+          <th scope="row" class="team-col">{r.isClub && <Logo tone={tone === 'dark' ? 'dark' : 'light'} alt="" sizes="28px" class="row-badge" />}{r.team}</th>
+          <td>{r.played}</td>
+          {!compact && <><td>{r.won}</td><td>{r.drawn}</td><td>{r.lost}</td><td>{r.goalsFor}</td><td>{r.goalsAgainst}</td></>}
+          <td>{sign(r.goalDifference)}</td>
+          <td class="pts">{r.points}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+<style>
+  .table-wrap { overflow-x: auto; }
+  .table-wrap:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  caption { padding: 0 0 .75rem; color: var(--muted); font-size: .82rem; text-align: left; }
+  th, td { padding: .7rem .6rem; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  thead th { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+  abbr { text-decoration: none; }
+  .team-col { text-align: left; }
+  tbody th { font-weight: 600; }
+  tbody th :global(.row-badge) { display: inline-block; width: 28px; height: 25px; margin-right: .5rem; vertical-align: middle; object-fit: contain; }
+  .pts { font-weight: 800; }
+  .club { color: #fff; background: var(--red); }
+  .club th, .club td { border-top-color: var(--red); font-weight: 800; }
+  .dark caption, .dark thead th { color: #b5b5b5; }
+  .dark th, .dark td { border-top-color: #373737; }
+  .dark tbody th { color: #fff; }
+</style>

@@ -1,7 +1,7 @@
 import { cmsContent, type TeamContent } from '@/lib/cms';
 import { mensFirstTeamPlayers, mensPhotoDir, mensPlaceholderCards, mensTeamNews } from './mens-first-team';
 import { womensFirstTeamPlayers, womensPhotoDir, womensPlaceholderCards, womensTeamNews } from './womens-team';
-import type { LinkTarget, Player, Section, Team, TeamId } from './types';
+import type { LinkTarget, Player, Section, Story, Team, TeamId } from './types';
 
 export type { LinkTarget, Player, Section, Story, Team, TeamId } from './types';
 
@@ -27,10 +27,7 @@ export const teams: Record<TeamId, Team> = {
       emptyText: 'Player profiles will appear here once confirmed by the club.',
     },
     matches: {
-      introduction: 'Fixtures, results and competition information in one clear matchday view.',
-      statusTitle: 'Fixtures coming soon',
-      statusText: 'The Match Centre structure is ready. Official competition data will be published after the club confirms its approved source and verifies the schedule.',
-      hasMatchCentre: true,
+      introduction: 'Fixtures, results and the Northern Premier League East Division table, with every kick-off in UK time.',
     },
     newsPage: {
       introduction: 'Updates from the team, the boardroom, our commercial partners and the Bridlington community.',
@@ -46,7 +43,7 @@ export const teams: Record<TeamId, Team> = {
     basePath: '/womens/',
     ...managed('womens', { photoDir: womensPhotoDir, players: womensFirstTeamPlayers, placeholderCards: womensPlaceholderCards, news: womensTeamNews }),
     home: {
-      introduction: "The home of Bridlington Town AFC's women's first team. Squad, fixtures and news will appear here as the club confirms them.",
+      introduction: "The home of Bridlington Town AFC's women's first team. Follow the squad, fixtures, results and news.",
     },
     squad: {
       introduction: "The players representing Bridlington Town AFC's women's first team.",
@@ -55,13 +52,10 @@ export const teams: Record<TeamId, Team> = {
     },
     matches: {
       introduction: "Fixtures, results and league information for the women's first team.",
-      statusTitle: 'No fixtures published yet',
-      statusText: "Women's fixtures, results and league information will be published here once confirmed by the club.",
-      hasMatchCentre: false,
     },
     newsPage: {
       introduction: "Updates about Bridlington Town AFC's women's first team.",
-      emptyTitle: 'No women’s team news yet',
+      emptyTitle: "No women's team news yet",
       emptyText: "Women's team stories will appear here once published by the club.",
     },
   },
@@ -98,4 +92,9 @@ export const primaryNavigation: { label: string; target: LinkTarget }[] = [
   { label: 'News', target: { section: 'news' } },
   { label: 'Club', target: { shared: '/club/' } },
   { label: 'Commercial', target: { shared: '/commercial/' } },
+  { label: 'Contact', target: { shared: '/contact/' } },
 ];
+
+/** A story with a body has its own article page; otherwise it links to its target. */
+export const storyHref = (team: TeamId, story: Story) =>
+  story.slug && story.body ? `${sectionHref(team, 'news')}${story.slug}/` : linkFor(team, story.link);

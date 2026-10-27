@@ -28,6 +28,40 @@ export const SCOPE_RULES = {
   },
 };
 
+/**
+ * Read limits within a collection, added to every query a role makes. These repeat the
+ * item-level read rules in cms/schema/access.mjs, which Directus Core does not apply.
+ */
+const published = { status: { _eq: PUBLISHED } };
+export const READ_SCOPES = {
+  'Commercial Editor': {
+    enquiries: { topic: { _eq: 'commercial' } },
+    pages: { area: { _eq: 'commercial' } },
+  },
+  // The website build token: published content only (and articles only once their time has come).
+  Website: {
+    ...Object.fromEntries(['competitions', 'people', 'squad_memberships', 'fixtures', 'league_tables', 'sponsors', 'sponsorship_packages', 'events', 'pages', 'announcements'].map((c) => [c, published])),
+    league_table_rows: { league_table: published },
+    articles: (now) => ({ _and: [published, { _or: [{ published_at: { _null: true } }, { published_at: { _lte: now } }] }] }),
+  },
+};
+
+/**
+ * Adds a role's read limits to a query's filter.
+ * @param {{ collection: string, query: object, user: { admin: boolean, roleNames: string[] }, now?: string }} read
+ * @returns {object} the query to run
+ */
+export function scopeQuery({ collection, query, user, now = new Date().toISOString() }) {
+  if (user.admin || user.roleNames.some((role) => APPROVER_ROLES.includes(role))) return query;
+  const limits = user.roleNames
+    .map((role) => READ_SCOPES[role]?.[collection])
+    .filter(Boolean)
+    .map((limit) => (typeof limit === 'function' ? limit(now) : limit));
+  if (!limits.length) return query;
+  const filters = [...(query.filter ? [query.filter] : []), ...limits];
+  return { ...query, filter: { _and: filters } };
+}
+
 /** Collections whose published content appears on the website. */
 export const SITE_COLLECTIONS = [
   'teams', 'seasons', 'competitions', 'people', 'squad_memberships', 'fixtures', 'league_tables',

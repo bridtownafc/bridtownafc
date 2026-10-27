@@ -5,11 +5,12 @@
 // - the website's read-only token is created once and stored in cms/.env.
 // Usage: npm run cms:bootstrap [-- --otp=123456]   (OTP once the Super Admin has 2FA)
 import { randomBytes } from 'node:crypto';
-import { COLLECTIONS, FOLDERS } from '../schema/collections.mjs';
+import { COLLECTIONS, COLLECTION_UPDATES, FIELD_UPDATES, FOLDERS } from '../schema/collections.mjs';
 import { POLICIES, ROLES, SUPER_ADMIN_ROLE } from '../schema/access.mjs';
 import { DirectusError, loadEnv, login, q, setEnvValue } from './lib/directus.mjs';
 
 const WEBSITE_USER_EMAIL = 'website-build@example.com';
+const ENQUIRY_USER_EMAIL = 'enquiry-form@example.com';
 const EXTENSION = 'directus-extension-brid-publishing';
 
 const { url, env } = loadEnv();
@@ -63,6 +64,17 @@ for (const def of COLLECTIONS) {
     await api.post(`/fields/${def.collection}`, strip(f));
     log(`+ ${def.collection}.${f.field}`);
   }
+}
+
+console.log('Field updates');
+// The only changes bootstrap makes to existing fields: listed explicitly in collections.mjs.
+for (const { collection, field, meta, schema } of FIELD_UPDATES) {
+  await api.patch(`/fields/${collection}/${field}`, { meta, ...(schema ? { schema } : {}) });
+  log(`~ ${collection}.${field}`);
+}
+for (const { collection, meta } of COLLECTION_UPDATES) {
+  await api.patch(`/collections/${collection}`, { meta });
+  log(`~ ${collection}`);
 }
 
 console.log('Relations');
@@ -150,15 +162,27 @@ if (!websiteUser || !env.DIRECTUS_WEBSITE_TOKEN) {
   log('exists; token unchanged');
 }
 
+console.log('Enquiry form account');
+const [enquiryUser] = await api.get('/users' + q({ filter: { email: { _eq: ENQUIRY_USER_EMAIL } }, fields: 'id' }));
+if (!enquiryUser || !env.ENQUIRY_FORM_TOKEN) {
+  const token = randomBytes(32).toString('base64url');
+  if (enquiryUser) await api.patch(`/users/${enquiryUser.id}`, { token, role: roleIds['Enquiry form'] });
+  else await api.post('/users', { first_name: 'Enquiry', last_name: 'form', email: ENQUIRY_USER_EMAIL, role: roleIds['Enquiry form'], token, status: 'active' });
+  await setEnvValue('ENQUIRY_FORM_TOKEN', token);
+  log('create-only token created and saved to cms/.env (not printed)');
+} else {
+  log('exists; token unchanged');
+}
+
 if (coreMode) {
   console.warn(`
 WARNING: No licence key, so Directus refused item- and field-level permission rules
   (Core tier). Applied at collection level instead.
   Still enforced: which collections each role can use; approvals, role scope, live-item
   deletes and file ownership (brid-publishing); published-only website sync.
-  NOT enforced until a licence key is added and bootstrap re-run: read limits inside a
-  collection (e.g. Commercial Editors can see non-commercial pages; the website token can
-  read drafts and internal notes, although the sync never requests them), field limits
+  Read limits inside a collection (Commercial Editors, the website token) are applied by
+  brid-publishing to top-level queries.
+  NOT enforced until a licence key is added and bootstrap re-run: field limits
   (staff can see colleagues' email addresses), and version/comment ownership.
   Fine for local testing; production needs the Open Innovation Grant key.`);
 }

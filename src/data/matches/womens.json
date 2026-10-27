@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "team": "womens",
+  "season": "2026/27",
+  "source": {
+    "provider": "fa-full-time",
+    "name": "FA Full-Time",
+    "method": "embed",
+    "url": "https://fulltime.thefa.com/displayTeam.html?id=65157437",
+    "attribution": "Fixtures, results and table supplied by FA Full-Time"
+  },
+  "sync": {
+    "status": "not-configured",
+    "lastAttemptAt": null,
+    "lastSuccessAt": null,
+    "lastError": null,
+    "consecutiveFailures": 0
+  },
+  "matches": [],
+  "table": null
+}

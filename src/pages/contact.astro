@@ -1,9 +1,44 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
+import EnquiryForm from '@/components/EnquiryForm.astro';
+import { TICKETS_URL, club, mapsHref, telHref } from '@/data/club';
 ---
-<BaseLayout title="Contact | Bridlington Town AFC" description="Contact Bridlington Town AFC about football, matchdays, community activity and commercial partnerships.">
-  <PageHero eyebrow="Get in touch" title="Contact the club" introduction="Choose the right enquiry route and help us get your message to the right person." />
-  <section class="section"><div class="shell contact-grid"><div><p class="eyebrow">Enquiries</p><h2>How can we help?</h2><p>Public contact details and the working enquiry form will be connected once recipients, consent wording and data-retention arrangements are confirmed.</p></div><div class="grid-2"><div class="card"><h3>Commercial</h3><p>Sponsorship, advertising, hospitality and partnerships.</p><a class="card-link" href="/commercial/">View opportunities →</a></div><div class="card"><h3>Matchday</h3><p>Admission, directions, accessibility and supporter questions.</p><a class="card-link" href="/club/#matchday">Matchday information →</a></div><div class="card"><h3>Football</h3><p>Team, fixtures, media and football-related enquiries.</p></div><div class="card"><h3>Community</h3><p>Events, organisations, charities and community work.</p></div></div></div></section>
+<BaseLayout title="Contact | Bridlington Town AFC" description="Contact Bridlington Town AFC about sponsorship, matchdays, tickets, football and community activity.">
+  <PageHero eyebrow="Get in touch" title="Contact the club" introduction="Send us a message and it will reach the right person at the club." />
+  <section class="section"><div class="shell contact-grid">
+    <div class="details">
+      <h2>Club details</h2>
+      <dl>
+        <div><dt>Telephone</dt><dd><a href={telHref(club.contactPhone)}>{club.contactPhone}</a></dd></div>
+        {club.contactEmail && <div><dt>Email</dt><dd><a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></dd></div>}
+        <div><dt>Ground</dt><dd><address>{club.address.split(', ').map((line, i, all) => <>{line}{i < all.length - 1 && <br />}</>)}</address><a href={mapsHref} rel="noopener">Open in Google Maps</a></dd></div>
+        <div><dt>Tickets</dt><dd><a href={TICKETS_URL} rel="noopener">Club ticket website</a></dd></div>
+      </dl>
+      <h2 class="routes-title">Quick routes</h2>
+      <ul class="routes" role="list">
+        <li><a href="/commercial/">Sponsorship and advertising <span aria-hidden="true">→</span></a></li>
+        <li><a href="/club/#matchday">Matchday, directions and accessibility <span aria-hidden="true">→</span></a></li>
+        <li><a href={TICKETS_URL} rel="noopener">Buy match tickets <span aria-hidden="true">→</span></a></li>
+      </ul>
+    </div>
+    <div id="enquire">
+      <h2>Send an enquiry</h2>
+      <EnquiryForm topic="general" />
+    </div>
+  </div></section>
 </BaseLayout>
-<style>.contact-grid { display: grid; grid-template-columns: .7fr 1.3fr; gap: 4rem; } @media(max-width:850px){.contact-grid{grid-template-columns:1fr}}</style>
+<style>
+  .contact-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 4rem; }
+  .contact-grid h2 { font-size: clamp(2rem, 4vw, 3rem); }
+  dl { display: grid; gap: 1.25rem; margin: 0 0 2.5rem; }
+  dt { color: var(--red); font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  dd { margin: .2rem 0 0; font-size: 1.1rem; }
+  dd a { font-weight: 700; text-underline-offset: 3px; }
+  address { font-style: normal; }
+  .routes { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .routes a { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--line); font: 800 1.2rem var(--display); text-decoration: none; text-transform: uppercase; }
+  .routes a:hover { color: var(--red); }
+  #enquire { scroll-margin-top: 1rem; }
+  @media (max-width: 850px) { .contact-grid { grid-template-columns: 1fr; gap: 3rem; } }
+</style>

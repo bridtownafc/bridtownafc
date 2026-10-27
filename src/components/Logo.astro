@@ -1,0 +1,29 @@
+---
+// The club crest. `tone="dark"` is for black or dark surfaces: its scroll lettering is white.
+import { LOGO_RATIO, logoSrc, logoSrcset, type LogoTone } from '@/lib/brand';
+
+interface Props {
+  tone: LogoTone;
+  /** Empty for a decorative crest next to the club name. */
+  alt: string;
+  /** Rendered width, used to pick a file, e.g. "60px" or "(max-width: 560px) 88px, 180px". */
+  sizes: string;
+  class?: string;
+  eager?: boolean;
+}
+const { tone, alt, sizes, class: className, eager = false } = Astro.props;
+---
+<picture>
+  <source type="image/webp" srcset={logoSrcset(tone, 'webp')} sizes={sizes} />
+  <img
+    class={className}
+    src={logoSrc(tone, 320)}
+    srcset={logoSrcset(tone, 'png')}
+    sizes={sizes}
+    alt={alt}
+    width={LOGO_RATIO.width}
+    height={LOGO_RATIO.height}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+  />
+</picture>

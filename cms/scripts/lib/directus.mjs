@@ -62,6 +62,9 @@ export function client(baseUrl, token) {
 }
 
 export async function login(baseUrl, email, password, otp) {
+  // Inside `npm run cms:admin`, the Super Admin is already signed in (with one 2FA code) and
+  // the session token is passed down, so each step does not need a new code.
+  if (process.env.DIRECTUS_ADMIN_SESSION && email === process.env.ADMIN_EMAIL) return client(baseUrl, process.env.DIRECTUS_ADMIN_SESSION);
   const data = await client(baseUrl).post('/auth/login', { email, password, ...(otp ? { otp } : {}) });
   return client(baseUrl, data.access_token);
 }

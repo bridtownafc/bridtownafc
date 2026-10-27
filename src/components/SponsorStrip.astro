@@ -1,22 +1,42 @@
+---
+// Club partners, from the CMS (published, current sponsors only). Until the club adds
+// any, an invitation to become a partner is shown instead of empty logo slots.
+import { sponsors } from '@/data/commercial';
+---
 <section class="partner-strip" aria-labelledby="partner-title">
   <div class="shell">
-    <div class="partner-head"><p id="partner-title">Our partners</p><a href="/commercial/">Become a partner →</a></div>
-    <div class="partner-grid">
-      <div class="partner-slot principal"><small>Principal partner</small><span>Partner logo</span></div>
-      <div class="partner-slot"><small>Main partner</small><span>Partner logo</span></div>
-      <div class="partner-slot"><small>Official partner</small><span>Partner logo</span></div>
-      <div class="partner-slot"><small>Community partner</small><span>Partner logo</span></div>
-    </div>
+    <div class="partner-head"><h2 id="partner-title">Our partners</h2><a href="/commercial/#enquire">Become a partner <span aria-hidden="true">→</span></a></div>
+    {sponsors.length > 0
+      ? (
+        <ul class="partner-grid" role="list">
+          {sponsors.map((s) => {
+            const inner = s.logo
+              ? <picture><source type="image/webp" srcset={s.logo.src.replace(/\.png$/, '.webp')} /><img src={s.logo.src} alt={s.logo.alt} width={s.logo.width} height={s.logo.height} loading="lazy" decoding="async" /></picture>
+              : <strong>{s.name}</strong>;
+            return (
+              <li class="partner">
+                {s.websiteUrl ? <a href={s.websiteUrl} rel="noopener sponsored">{inner}<span class="visually-hidden"> ({s.tier}, partner website)</span></a> : inner}
+                <small>{s.tier}</small>
+              </li>
+            );
+          })}
+        </ul>
+      )
+      : <p class="partner-invite">Local businesses help keep football at the heart of Bridlington. <a href="/commercial/#enquire">Contact us to discuss sponsorship.</a></p>}
   </div>
 </section>
 <style>
   .partner-strip { padding: 2.5rem 0; border-block: 1px solid var(--line); }
-  .partner-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; font-size: .75rem; font-weight: 800; text-transform: uppercase; }
-  .partner-head p { margin: 0; }
-  .partner-head a { color: var(--red); }
-  .partner-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 1px; background: var(--line); }
-  .partner-slot { display: grid; min-height: 110px; place-items: center; padding: 1rem; background: #fff; text-align: center; }
-  .partner-slot small { color: #888; font-size: .63rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-  .partner-slot span { color: #aaa; font: 800 1rem var(--display); text-transform: uppercase; }
-  @media(max-width: 700px){.partner-grid{grid-template-columns:1fr 1fr}.partner-head{align-items:start;flex-direction:column}}
+  .partner-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+  .partner-head h2 { margin: 0; font-size: 1.6rem; }
+  .partner-head a { color: var(--red); font-size: .8rem; font-weight: 800; text-transform: uppercase; }
+  .partner-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--line); }
+  .partner { display: grid; min-height: 130px; place-items: center; gap: .5rem; padding: 1rem; background: #fff; text-align: center; }
+  .partner img { max-width: 160px; max-height: 70px; width: auto; height: auto; object-fit: contain; }
+  .partner a { display: grid; place-items: center; text-decoration: none; }
+  .partner strong { font: 800 1.2rem var(--display); text-transform: uppercase; }
+  .partner small { color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .partner-invite { max-width: 720px; margin: 0; }
+  .partner-invite a { color: var(--red); font-weight: 800; }
+  @media (max-width: 700px) { .partner-head { flex-direction: column; } }
 </style>
