@@ -68,8 +68,8 @@ for (const def of COLLECTIONS) {
 
 console.log('Field updates');
 // The only changes bootstrap makes to existing fields: listed explicitly in collections.mjs.
-for (const { collection, field, meta, schema } of FIELD_UPDATES) {
-  await api.patch(`/fields/${collection}/${field}`, { meta, ...(schema ? { schema } : {}) });
+for (const { collection, field, type, meta, schema } of FIELD_UPDATES) {
+  await api.patch(`/fields/${collection}/${field}`, { ...(type ? { type } : {}), meta, ...(schema ? { schema } : {}) });
   log(`~ ${collection}.${field}`);
 }
 for (const { collection, meta } of COLLECTION_UPDATES) {

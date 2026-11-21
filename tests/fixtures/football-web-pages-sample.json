@@ -1,0 +1,229 @@
+{
+  "note": "Extract of real Football Web Pages API responses for team 288 and competition 15, fetched 16 Nov 2026. Public match data; no credentials.",
+  "fixtures": {
+    "fixtures-results": {
+      "team": {
+        "name": "Bridlington Town",
+        "id": 288
+      },
+      "matches": [
+        {
+          "date": "2026-08-08",
+          "venue": "Leo Group Stadium",
+          "round": {
+            "name": "Extra Preliminary Round",
+            "id": 1
+          },
+          "competition": {
+            "name": "Emirates FA Cup",
+            "id": 21
+          },
+          "id": 571567,
+          "time": "15:00",
+          "home-team": {
+            "score": 1,
+            "half-time-score": 1,
+            "name": "Penrith",
+            "id": 875
+          },
+          "referee": "William Owen",
+          "away-team": {
+            "score": 2,
+            "half-time-score": 1,
+            "name": "Bridlington Town",
+            "id": 288
+          },
+          "attendance": 159,
+          "status": {
+            "short": "FT",
+            "full": "Full Time"
+          }
+        },
+        {
+          "date": "2026-08-15",
+          "venue": "Mounting Systems Stadium",
+          "competition": {
+            "name": "Northern Premier League - East Division",
+            "id": 15
+          },
+          "id": 581726,
+          "time": "15:00",
+          "home-team": {
+            "score": 1,
+            "half-time-score": 0,
+            "name": "Bridlington Town",
+            "id": 288
+          },
+          "referee": "Ethan Nundy",
+          "away-team": {
+            "score": 1,
+            "half-time-score": 1,
+            "name": "Hallam",
+            "id": 432
+          },
+          "attendance": 395,
+          "status": {
+            "short": "FT",
+            "full": "Full Time"
+          }
+        },
+        {
+          "date": "2026-11-17",
+          "venue": "Mounting Systems Stadium",
+          "competition": {
+            "name": "Northern Premier League - East Division",
+            "id": 15
+          },
+          "id": 593801,
+          "time": "19:45",
+          "home-team": {
+            "score": 0,
+            "name": "Bridlington Town",
+            "id": 288
+          },
+          "away-team": {
+            "score": 0,
+            "name": "Dunston",
+            "id": 1015
+          },
+          "status": {
+            "short": "7.45pm",
+            "full": "Kick off 7.45pm"
+          }
+        },
+        {
+          "date": "2026-12-12",
+          "venue": "Mounting Systems Stadium",
+          "competition": {
+            "name": "Northern Premier League - East Division",
+            "id": 15
+          },
+          "id": 581955,
+          "time": "15:00",
+          "home-team": {
+            "score": 0,
+            "name": "Bridlington Town",
+            "id": 288
+          },
+          "away-team": {
+            "score": 0,
+            "name": "Stocksbridge Park Steels",
+            "id": 325
+          },
+          "postponed": true,
+          "status": {
+            "short": "P",
+            "full": "Match Postponed"
+          }
+        }
+      ]
+    }
+  },
+  "table": {
+    "league-table": {
+      "teams": [
+        {
+          "all-matches": {
+            "lost": 0,
+            "against": 15,
+            "goal-difference": 34,
+            "won": 14,
+            "for": 49,
+            "drawn": 5,
+            "played": 19
+          },
+          "zone": "Promotion",
+          "name": "Bradford (Park Avenue)",
+          "home-matches": {
+            "lost": 0,
+            "against": 10,
+            "won": 8,
+            "for": 32,
+            "drawn": 2,
+            "played": 10
+          },
+          "away-matches": {
+            "lost": 0,
+            "against": 5,
+            "won": 6,
+            "for": 17,
+            "drawn": 3,
+            "played": 9
+          },
+          "id": 119,
+          "position": 1,
+          "total-points": 47
+        },
+        {
+          "all-matches": {
+            "lost": 6,
+            "against": 23,
+            "goal-difference": 0,
+            "won": 6,
+            "for": 23,
+            "drawn": 4,
+            "played": 16
+          },
+          "zone": "Play-offs (down)",
+          "name": "Bridlington Town",
+          "home-matches": {
+            "lost": 2,
+            "against": 7,
+            "won": 2,
+            "for": 9,
+            "drawn": 3,
+            "played": 7
+          },
+          "away-matches": {
+            "lost": 4,
+            "against": 16,
+            "won": 4,
+            "for": 14,
+            "drawn": 1,
+            "played": 9
+          },
+          "id": 288,
+          "position": 14,
+          "total-points": 22
+        },
+        {
+          "all-matches": {
+            "lost": 15,
+            "against": 53,
+            "goal-difference": -42,
+            "won": 1,
+            "for": 11,
+            "drawn": 3,
+            "played": 19
+          },
+          "zone": "Relegation",
+          "name": "Stocksbridge Park Steels",
+          "home-matches": {
+            "lost": 7,
+            "against": 25,
+            "won": 1,
+            "for": 5,
+            "drawn": 1,
+            "played": 9
+          },
+          "away-matches": {
+            "lost": 8,
+            "against": 28,
+            "won": 0,
+            "for": 6,
+            "drawn": 2,
+            "played": 10
+          },
+          "id": 325,
+          "position": 22,
+          "total-points": 6
+        }
+      ],
+      "description": "League Table",
+      "competition": {
+        "name": "Northern Premier League - East Division",
+        "id": 15
+      }
+    }
+  }
+}

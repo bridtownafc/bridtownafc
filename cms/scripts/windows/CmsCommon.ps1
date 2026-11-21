@@ -23,7 +23,16 @@ $LogDir    = Join-Path $CmsHome 'logs'
 $RunDir    = Join-Path $CmsHome 'run'
 
 # Keep in step with cms/server/directus-env.mjs.
-$Ports = [ordered]@{ Directus = 8055; PostgreSQL = 5433; Mailpit = 8025; 'Mailpit SMTP' = 1025 }
+$Ports = [ordered]@{ Directus = 8055; PostgreSQL = 5433; Mailpit = 8025; 'Mailpit SMTP' = 1025; 'Rebuild listener' = 4400; 'Website preview' = 4321 }
+
+# Website services run with the project's normal Node (not Node 22, which is only for Directus).
+$WebsiteServices = [ordered]@{
+    'rebuild-listener' = @{ Title = 'Website rebuild listener'; Script = 'cms/scripts/rebuild-listener.mjs' }
+    'match-scheduler'  = @{ Title = 'Match data scheduler';     Script = 'scripts/matches/scheduler.mjs' }
+    # Serves dist/ (the last successful CMS build) at http://localhost:4321; rebuilds replace it in place.
+    'website-preview'  = @{ Title = 'Website preview';          Script = 'node_modules/astro/astro.js preview --host 127.0.0.1 --port 4321' }
+}
+function Get-ProjectNode { (Get-Command node -ErrorAction Stop).Source }
 
 function Write-Step([string] $Message) { Write-Host "-> $Message" -ForegroundColor Cyan }
 function Write-Ok([string] $Message) { Write-Host "   $Message" -ForegroundColor Green }
@@ -61,6 +70,17 @@ function Get-TrackedProcess([string] $Name, [string] $ExpectedPath) {
     $process = Get-Process -Id ([int](Get-Content $pidFile)) -ErrorAction SilentlyContinue
     if ($process -and $process.Path -and ((Resolve-Path $process.Path).Path -eq (Resolve-Path $ExpectedPath).Path)) { return $process }
     Remove-Item $pidFile -Force
+    return $null
+}
+
+# A website service already running from this project but not recorded (for example started by
+# hand with npm run cms:listen): returns it so it is adopted rather than started twice.
+function Find-ScriptProcess([string] $Script) {
+    # Script path plus its first argument (if any); quotes Windows adds around paths are skipped by the wildcards.
+    $words = @($Script -split ' ' | Select-Object -First 2)
+    $pattern = '*' + (($words -join '*') -replace '/', '*') + '*'
+    $found = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | Where-Object { $_.CommandLine -like $pattern -and $_.CommandLine -notlike '*--once*' } | Select-Object -First 1
+    if ($found) { return Get-Process -Id $found.ProcessId -ErrorAction SilentlyContinue }
     return $null
 }
 

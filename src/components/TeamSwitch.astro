@@ -7,9 +7,11 @@ const { ctx } = Astro.props;
 const path = Astro.url.pathname;
 
 // Team pages open the equivalent section of the other team (a player profile opens the
-// other team's squad). Shared pages stay put and only change the selected team.
+// other team's squad). Shared pages stay put and only change the selected team. The 404 page
+// is served at any missing address, so it links to each team's home instead.
+const notFound = /^\/404(\/|\.html)?$/.test(path);
 const hrefFor = (id: (typeof TEAM_IDS)[number]) =>
-  ctx.shared ? `${path}?team=${id}` : sectionHref(id, ctx.section ?? 'home');
+  ctx.shared && !notFound ? `${path}?team=${id}` : sectionHref(id, ctx.section ?? 'home');
 ---
 <nav class="team-switch" aria-label="Choose team">
   {TEAM_IDS.map((id) => (

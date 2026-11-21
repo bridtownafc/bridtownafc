@@ -2,14 +2,16 @@
 // with staff corrections from the CMS applied on top when the site is built from Directus.
 // Everything is decided at build time; the scheduler rebuilds the site when data changes.
 import { cmsContent } from '@/lib/cms';
+import { club } from '@/data/club';
 import {
   applyOverrides, fixtures, isStale, latestResult, nextMatch, otherMatches, results, snapshotSchema,
   type LeagueTable, type Match, type MatchSnapshot, type TeamKey,
 } from './model';
-import { TEAM_SOURCES, WOMENS_FULLTIME_CODES, type TeamSource } from './sources';
+import { TEAM_SOURCES, WOMENS_FULLTIME_CODES, type FullTimeCodes, type TeamSource } from './sources';
 
 export type { LeagueTable, Match, MatchSnapshot } from './model';
 export { isAwaitingResult, outcome } from './model';
+export type { FullTimeCodes } from './sources';
 
 const snapshots = import.meta.glob<unknown>('/src/data/matches/*.json', { eager: true, import: 'default' });
 
@@ -26,8 +28,6 @@ function load(team: TeamKey): MatchSnapshot {
 
 /** The moment this build was made. Pages say "at the time of the last update", never "live". */
 export const BUILT_AT = new Date();
-
-export interface FullTimeCodes { fixtures: string; results: string; table: string }
 
 export interface TeamMatches {
   team: TeamKey;
@@ -55,7 +55,12 @@ export function teamMatches(team: TeamKey): TeamMatches {
   const snapshot = load(team);
   const source = TEAM_SOURCES[team];
   const managed = cmsContent?.matchData?.[team];
-  const { matches, rejected } = applyOverrides(snapshot.matches, managed?.overrides ?? []);
+  // Football Web Pages still names the men's ground by a former sponsor's name, so men's home
+  // matches show the club's confirmed ground name (Site settings). A CMS correction still wins.
+  const imported = team === 'mens'
+    ? snapshot.matches.map((m) => (m.venueType === 'home' ? { ...m, venue: club.groundName } : m))
+    : snapshot.matches;
+  const { matches, rejected } = applyOverrides(imported, managed?.overrides ?? []);
   for (const message of rejected) console.warn(`[matches] ${team}: ${message}`);
 
   // The official automatic table always wins; a staff-entered table is shown only without one.
@@ -73,7 +78,7 @@ export function teamMatches(team: TeamKey): TeamMatches {
   } : null);
 
   const codes = managed?.fulltimeCodes ?? (team === 'womens' ? WOMENS_FULLTIME_CODES : null);
-  const embedCodes = source.method === 'embed' && codes && (codes.fixtures || codes.results || codes.table) ? codes : null;
+  const embedCodes = source.method === 'embed' && codes && Object.values(codes).some(Boolean) ? codes : null;
 
   const value: TeamMatches = {
     team,

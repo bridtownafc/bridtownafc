@@ -10,6 +10,7 @@ import { siteContentSchema } from '../../src/lib/cms/schema.ts';
 import sharp from 'sharp';
 import { cropFor, writeVariants } from '../../scripts/lib/squad-photos.mjs';
 import { londonDate } from '../../src/lib/matches/model.ts';
+import { fullTimeCode } from '../../src/lib/matches/sources.ts';
 import { client, loadEnv, q } from './lib/directus.mjs';
 
 const SNAPSHOT = 'src/data/cms/content.json';
@@ -27,15 +28,31 @@ const today = now.slice(0, 10);
 const published = { status: { _eq: 'published' } };
 const all = { limit: '-1' };
 
+// Player fields added by the staff admin's player management (cms/scripts/player-admin.mjs).
+// Until that has been applied to a CMS they do not exist, and the sync carries on without them.
+const OPTIONAL_PLAYER_FIELDS = ['captaincy', 'person.sponsor_name', 'person.sponsor_url'];
+async function getWithOptional(base, params, optional) {
+  try {
+    return await api.get(base + q({ ...params, fields: [params.fields, ...optional].join(',') }));
+  } catch (error) {
+    const missing = optional.filter((f) => error.status === 403 && error.message.includes(`"${f.split('.').pop()}"`));
+    if (!missing.length) throw error;
+    console.warn(`Not in this CMS yet, so not shown: ${missing.join(', ')}.`);
+    return getWithOptional(base, params, optional.filter((f) => !missing.includes(f)));
+  }
+}
+
 const [teams, memberships, articles, packages, sponsors, settings, fixtures, tables] = await Promise.all([
-  api.get('/items/teams' + q({ ...all, fields: 'id,key,placeholder_cards,fulltime_fixtures_code,fulltime_results_code,fulltime_table_code', sort: 'sort' })),
-  api.get('/items/squad_memberships' + q({
+  // All readable fields: the FA Full-Time code fields differ between CMS schema versions
+  // (fulltime_fixtures_results_code is newer), and a missing one must not stop publishing.
+  api.get('/items/teams' + q({ ...all, fields: '*', sort: 'sort' })),
+  getWithOptional('/items/squad_memberships', {
     ...all,
     filter: { _and: [published, { kind: { _eq: 'player' } }, { person: published }, { _or: [{ left_on: { _null: true } }, { left_on: { _gt: today } }] }] },
-    fields: 'sort,team.key,person.slug,person.display_name,person.photo_description,person.photo_crop,' +
+    fields: 'sort,shirt_number,position,team.key,person.id,person.slug,person.display_name,person.biography,person.photo_description,person.photo_crop,' +
       'person.photo.id,person.photo.type,person.photo.filename_download,person.photo.modified_on,person.photo.width,person.photo.height,person.photo.focal_point_x',
     sort: 'sort,person.display_name',
-  })),
+  }, OPTIONAL_PLAYER_FIELDS),
   api.get('/items/articles' + q({
     ...all,
     filter: { _and: [published, { _or: [{ published_at: { _null: true } }, { published_at: { _lte: now } }] }] },
@@ -70,11 +87,14 @@ const [teams, memberships, articles, packages, sponsors, settings, fixtures, tab
 
 const exists = (file) => existsSync(file);
 
+const usedOriginals = new Set();
+
 /** Downloads an original once per upload/edit and keeps it in .cache. */
 async function original(file) {
   if (!PHOTO_TYPES.includes(file.type)) throw new Error(`${file.filename_download}: ${file.type} is not a supported photo type`);
   const version = createHash('sha256').update(`${file.id}:${file.modified_on}`).digest('hex').slice(0, 16);
   const cached = path.join(CACHE_DIR, `${file.id}-${version}${path.extname(file.filename_download).toLowerCase() || '.jpg'}`);
+  usedOriginals.add(path.basename(cached));
   if (!exists(cached)) {
     const response = await api.raw('GET', `/assets/${file.id}`);
     if (!response.ok) throw new Error(`Downloading ${file.filename_download} failed: ${response.status}`);
@@ -111,6 +131,8 @@ async function webImage(file, dir, name, { width, keepAlpha = false }) {
   return { src: `${MEDIA_URL}/${dir}/${name}.${ext}`, width: info.width, height: info.height };
 }
 
+const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'];
+const blank = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const LINKS = { news: { section: 'news' }, matches: { section: 'matches' }, team: { section: 'team' }, club: { shared: '/club/' }, commercial: { shared: '/commercial/' }, contact: { shared: '/contact/' } };
 
 const teamContent = {};
@@ -118,9 +140,22 @@ for (const team of teams) {
   const webDir = path.join(staging, 'squad', team.key, 'web');
   await mkdir(webDir, { recursive: true });
   const players = [];
-  for (const { person, team: t } of memberships) {
-    if (t?.key !== team.key) continue;
+  const listed = new Set();
+  for (const { person, team: t, shirt_number: number, position, captaincy } of memberships) {
+    // A person appears once per team, at their first allocation in display order, even if
+    // they have more than one current membership (e.g. one per season).
+    if (t?.key !== team.key || listed.has(person.id)) continue;
+    listed.add(person.id);
     const player = { slug: person.slug, name: person.display_name };
+    // Optional details are passed on only when valid; anything else is left out, not guessed.
+    if (Number.isInteger(number) && number >= 1 && number <= 99) player.number = number;
+    if (POSITIONS.includes(position)) player.position = position;
+    if (blank(person.biography)) player.biography = blank(person.biography);
+    if (['captain', 'vice_captain'].includes(captaincy)) player.captaincy = captaincy;
+    if (blank(person.sponsor_name)) {
+      const sponsorUrl = blank(person.sponsor_url);
+      player.sponsor = { name: blank(person.sponsor_name), ...(sponsorUrl && /^https?:[/][/]\S+$/.test(sponsorUrl) ? { url: sponsorUrl } : {}) };
+    }
     if (person.photo) {
       const source = await original(person.photo);
       await writeVariants(source, await regionFor(source, person.photo, person.photo_crop), webDir, person.slug);
@@ -161,7 +196,6 @@ for (const s of sponsors) {
   sponsorList.push({ name, tier: s.tier, logo, websiteUrl: url, description: s.description?.trim() || null });
 }
 
-const blank = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const siteSettings = settings && {
   groundName: blank(settings.ground_name),
   address: blank(settings.address),
@@ -206,7 +240,12 @@ for (const team of teams) {
         points: r.points ?? 0, isClub: r.is_bridlington === true,
       })),
     } : null,
-    fulltimeCodes: { fixtures: team.fulltime_fixtures_code ?? '', results: team.fulltime_results_code ?? '', table: team.fulltime_table_code ?? '' },
+    fulltimeCodes: {
+      table: fullTimeCode(team.fulltime_table_code),
+      fixturesResults: fullTimeCode(team.fulltime_fixtures_results_code),
+      fixtures: fullTimeCode(team.fulltime_fixtures_code),
+      results: fullTimeCode(team.fulltime_results_code),
+    },
   };
 }
 
@@ -263,6 +302,10 @@ for (const relative of await files(MEDIA_DIR)) {
   if (!keep.has(relative)) await retry(() => unlink(path.join(MEDIA_DIR, relative)));
 }
 await rm(staging, { recursive: true, force: true, maxRetries: 5 });
+// Cached originals of photos no published content uses any more (deleted, replaced or edited).
+for (const name of exists(CACHE_DIR) ? await readdir(CACHE_DIR) : []) {
+  if (!usedOriginals.has(name)) await retry(() => rm(path.join(CACHE_DIR, name), { force: true }));
+}
 
 const count = (key) => `${content.teams[key].players.length} players, ${content.teams[key].news.length} stories`;
 console.log(`Synced from ${url}: men's ${count('mens')}; women's ${count('womens')}; ${content.commercialOptions.length} packages; ` +

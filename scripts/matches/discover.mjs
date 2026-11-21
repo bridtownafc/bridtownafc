@@ -1,4 +1,5 @@
-// Finds Bridlington Town's ids in Football Web Pages, for FWP_TEAM_ID in .env.
+// Finds Bridlington Town's team ID and the East Division's competition ID in Football Web
+// Pages, for FWP_TEAM_ID and FWP_COMPETITION_ID in .env.
 // Needs FWP_API_KEY. Saves the full response to .cache/matches/raw/ for checking.
 // Usage: npm run matches:discover
 import { existsSync } from 'node:fs';

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 // Match data: Europe/London time, status rules, merging, failure handling and team separation.
 // All match data here is synthetic (fictional opponents) and exists only for these tests.
 // Run: npm run test:matches
@@ -10,6 +11,7 @@ import {
 import { mapStatus, toMatch } from '../scripts/matches/providers/football-web-pages.mjs';
 import { syncTeam } from '../scripts/matches/lib/sync-team.mjs';
 import { nextInterval } from '../scripts/matches/scheduler.mjs';
+import { fullTimeCode, isClubName } from '../src/lib/matches/sources.ts';
 
 // --- Synthetic Football Web Pages responses (shape as expected by the adapter) ----------------
 const raw = (id, date, time, home, away, status = null, scores = [null, null], competition = 'Northern Premier League - East Division') => ({
@@ -30,11 +32,11 @@ const tableJson = (clubPosition = 2) => ({
 function fakeFetch(fixtures, table = tableJson(), calls = []) {
   return async (url) => {
     calls.push(String(url));
-    const body = String(url).includes('fixtures-results') ? { 'fixtures-results': { matches: fixtures } } : table;
+    const body = String(url).includes('fixtures-results') ? { 'fixtures-results': { team: { id: 123, name: BRID }, matches: fixtures } } : table;
     return new Response(JSON.stringify(body), { status: 200 });
   };
 }
-const env = { FWP_API_KEY: 'test-key', FWP_TEAM_ID: '123' };
+const env = { FWP_API_KEY: 'test-key', FWP_TEAM_ID: '123', FWP_COMPETITION_ID: '45' };
 
 // --- Europe/London time -----------------------------------------------------------------------
 test('kick-off times convert to UTC across British Summer Time', () => {
@@ -247,6 +249,102 @@ test('postponing a match through the CMS removes its score', () => {
 test('syncs every 15 minutes on a matchday afternoon, otherwise every 6 hours', async () => {
   const today = await syncTeam({ team: 'mens', previous: null, env, fetch: fakeFetch([raw(110, '2026-10-31', '15:00', BRID, 'Example Town')]) });
   assert.equal(nextInterval([today.snapshot], new Date('2026-10-31T14:00:00Z')), 15);
-  assert.equal(nextInterval([today.snapshot], new Date('2026-10-31T08:00:00Z')), 360);
   assert.equal(nextInterval([today.snapshot], new Date('2026-11-01T14:00:00Z')), 360);
+});
+
+test('a long wait never runs past the start of a matchday window', async () => {
+  const winter = await syncTeam({ team: 'mens', previous: null, env, fetch: fakeFetch([raw(111, '2026-10-31', '15:00', BRID, 'Example Town')]) });
+  assert.equal(nextInterval([winter.snapshot], new Date('2026-10-31T08:00:00Z')), 240, 'matchday morning: wait until 12:00 GMT');
+  assert.equal(nextInterval([winter.snapshot], new Date('2026-10-31T10:49:00Z')), 71);
+  assert.equal(nextInterval([winter.snapshot], new Date('2026-10-30T09:00:00Z')), 360, 'the day before: a normal wait');
+  assert.equal(nextInterval([winter.snapshot], new Date('2026-10-31T07:00:00Z')), 300);
+  const summer = await syncTeam({ team: 'mens', previous: null, env, fetch: fakeFetch([raw(112, '2026-08-15', '15:00', BRID, 'Example Town')]) });
+  assert.equal(nextInterval([summer.snapshot], new Date('2026-08-15T08:00:00Z')), 180, 'British Summer Time: 12:00 BST is 11:00 UTC');
+  assert.equal(nextInterval([summer.snapshot], new Date('2026-08-15T11:30:00Z')), 15);
+  assert.equal(nextInterval([summer.snapshot], new Date('2026-08-14T22:00:00Z')), 360);
+});
+
+// --- Configuration and full-season import ------------------------------------------------------------
+test('the table is requested by competition ID, fixtures by team ID, as documented', async () => {
+  const calls = [];
+  await syncTeam({ team: 'mens', previous: null, env, fetch: fakeFetch([], tableJson(), calls) });
+  assert.deepEqual(calls.map((u) => new URL(u).pathname + new URL(u).search), ['/v2/fixtures-results.json?team=123', '/v2/league-table.json?comp=45']);
+});
+
+test('without a competition ID the table is not fetched and the previous table is kept', async () => {
+  const withTable = await syncTeam({ team: 'mens', previous: null, env, fetch: fakeFetch([]) });
+  const calls = [];
+  const noComp = await syncTeam({ team: 'mens', previous: withTable.snapshot, env: { ...env, FWP_COMPETITION_ID: '' }, fetch: fakeFetch([], tableJson(), calls) });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(noComp.snapshot.table, withTable.snapshot.table);
+});
+
+test('IDs that are not numbers are refused rather than sent', async () => {
+  const r = await syncTeam({ team: 'mens', previous: null, env: { ...env, FWP_TEAM_ID: 'bridlington-town' }, fetch: fakeFetch([]) });
+  assert.equal(r.status, 'error');
+  assert.match(r.snapshot.sync.lastError, /numeric IDs/);
+});
+
+test('a whole season imports: every completed league and cup match and every remaining fixture', async () => {
+  const season = [];
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(Date.UTC(2026, 7, 8 + i * 4));
+    const date = d.toISOString().slice(0, 10);
+    season.push(raw(200 + i, date, '15:00', i % 2 ? BRID : `Example ${i}`, i % 2 ? `Example ${i}` : BRID, 'FT', [i % 3, 1], i % 6 === 5 ? 'FA Trophy' : 'Northern Premier League - East Division'));
+  }
+  for (let i = 0; i < 12; i++) season.push(raw(300 + i, `2026-11-${String(i * 2 + 1).padStart(2, '0')}`, '15:00', BRID, `Example Future ${i}`));
+  const r = await syncTeam({ team: 'mens', previous: null, env, now: new Date('2026-10-28T09:00:00Z'), fetch: fakeFetch(season) });
+  assert.equal(results(r.snapshot.matches).length, 18);
+  assert.equal(results(r.snapshot.matches).filter((m) => m.competition.kind === 'cup').length, 3);
+  assert.equal(fixtures(r.snapshot.matches).length, 12);
+});
+
+test('FA Full-Time codes are read from the number or from a pasted snippet', () => {
+  assert.equal(fullTimeCode('123456789'), '123456789');
+  assert.equal(fullTimeCode(`<div id="lrep987654321">Data loading…</div><script>var lrcode = '987654321'</script>`), '987654321');
+  assert.equal(fullTimeCode('<div id="lrep55555555"></div>'), '55555555');
+  assert.equal(fullTimeCode('not a code'), '');
+  assert.equal(fullTimeCode(null), '');
+});
+
+test("the ladies' FA Full-Time team name is recognised as the club", () => {
+  assert.equal(isClubName('Bridlington Town FC Rovers Ladies'), true);
+  assert.equal(isClubName('Bridlington Rovers'), false);
+});
+
+// --- Real Football Web Pages responses (extract saved 16 Nov 2026) ------------------------------
+const sample = JSON.parse(readFileSync(new URL('./fixtures/football-web-pages-sample.json', import.meta.url), 'utf8'));
+const realEnv = { FWP_API_KEY: 'test-key', FWP_TEAM_ID: '288', FWP_COMPETITION_ID: '15' };
+const realFetch = (fixtures = sample.fixtures, table = sample.table) => async (url) =>
+  new Response(JSON.stringify(String(url).includes('fixtures-results') ? fixtures : table), { status: 200 });
+
+test('real responses: results, an unplayed 0-0 fixture, a postponement and the table map correctly', async () => {
+  const r = await syncTeam({ team: 'mens', previous: null, env: realEnv, now: new Date('2026-11-16T09:00:00Z'), fetch: realFetch() });
+  assert.equal(r.status, 'ok', r.snapshot.sync.lastError);
+  const byId = Object.fromEntries(r.snapshot.matches.map((m) => [m.externalId, m]));
+  assert.deepEqual([byId['571567'].status, byId['571567'].venueType, byId['571567'].score], ['finished', 'away', { for: 2, against: 1 }]);
+  assert.equal(byId['571567'].competition.kind, 'cup');
+  assert.deepEqual([byId['581726'].status, byId['581726'].score, byId['581726'].competition.kind], ['finished', { for: 1, against: 1 }, 'league']);
+  // Not yet played: the API sends 0-0 and a kick-off time as the status. It must stay a fixture with no score.
+  assert.deepEqual([byId['593801'].status, byId['593801'].score, byId['593801'].kickoff], ['scheduled', null, '2026-11-17T19:45:00.000Z']);
+  assert.deepEqual([byId['581955'].status, byId['581955'].score], ['postponed', null]);
+  assert.equal(r.snapshot.table.rows.length, 3);
+  assert.equal(r.snapshot.table.rows.filter((row) => row.isClub).length, 1);
+  assert.equal(r.snapshot.table.competition, 'Northern Premier League East Division');
+});
+
+test('an answer for a different team or competition is refused and the previous data kept', async () => {
+  const good = await syncTeam({ team: 'mens', previous: null, env: realEnv, now: new Date('2026-11-16T09:00:00Z'), fetch: realFetch() });
+  const otherTeam = structuredClone(sample.fixtures);
+  otherTeam['fixtures-results'].team = { id: 875, name: 'Penrith' };
+  const r1 = await syncTeam({ team: 'mens', previous: good.snapshot, env: realEnv, fetch: realFetch(otherTeam) });
+  assert.equal(r1.status, 'error');
+  assert.match(r1.snapshot.sync.lastError, /not FWP_TEAM_ID 288/);
+  assert.deepEqual(r1.snapshot.matches, good.snapshot.matches);
+  const otherComp = structuredClone(sample.table);
+  otherComp['league-table'].competition.id = 14;
+  const r2 = await syncTeam({ team: 'mens', previous: good.snapshot, env: realEnv, fetch: realFetch(sample.fixtures, otherComp) });
+  assert.equal(r2.status, 'error');
+  assert.match(r2.snapshot.sync.lastError, /not FWP_COMPETITION_ID 15/);
+  assert.deepEqual(r2.snapshot.table, good.snapshot.table);
 });

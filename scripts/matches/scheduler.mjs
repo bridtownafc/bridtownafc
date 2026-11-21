@@ -21,6 +21,8 @@ import { TEAM_SOURCES } from '../../src/lib/matches/sources.ts';
 if (existsSync('.env')) process.loadEnvFile('.env');
 const MODE = process.env.MATCHES_REBUILD ?? (existsSync('cms/.env') ? 'listener' : 'local');
 const MAX_BUILD_AGE_MS = 6 * 60 * 60 * 1000;
+const MATCHDAY_START = 12;
+const MATCHDAY_END = 23;
 const stamp = () => new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' });
 
 let lastBuildAt = 0;
@@ -43,10 +45,24 @@ export function nextInterval(snapshots, now = new Date()) {
     const refresh = TEAM_SOURCES[team].refresh;
     if (!refresh) continue;
     const snapshot = snapshots.find((s) => s.team === team);
-    const matchday = snapshot && fixtures(snapshot.matches).some((m) => m.date === today && m.status !== 'postponed');
-    minutes = Math.min(minutes, matchday && hour >= 12 && hour < 23 ? refresh.matchdayMinutes : refresh.otherwiseMinutes);
+    const days = new Set(snapshot ? fixtures(snapshot.matches).filter((m) => m.status !== 'postponed').map((m) => m.date) : []);
+    let wait = days.has(today) && hour >= MATCHDAY_START && hour < MATCHDAY_END ? refresh.matchdayMinutes : refresh.otherwiseMinutes;
+    // Never sleep past the start of a matchday window (12:00 UK time on a day with a fixture).
+    for (const day of days) {
+      const start = londonTime(day, MATCHDAY_START);
+      const until = Math.ceil((start - now.getTime()) / 60_000);
+      if (until > 0 && until < wait) wait = until;
+    }
+    minutes = Math.min(minutes, wait);
   }
   return Number.isFinite(minutes) ? minutes : 360;
+}
+
+/** The UTC time (ms) of a whole hour, UK time, on a YYYY-MM-DD date. Handles British Summer Time. */
+function londonTime(date, hour) {
+  const guess = Date.parse(`${date}T${String(hour).padStart(2, '0')}:00:00Z`);
+  const shown = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' }).format(guess));
+  return guess - (shown - hour) * 3_600_000;
 }
 
 function sync() {

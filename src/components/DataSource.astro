@@ -1,32 +1,29 @@
 ---
 // Where a team's match data comes from, when it was last updated, and a clear notice if
-// the latest update failed. Never claims live scores.
+// the latest update failed. Never claims live scores, and never shows configuration details.
 import { stamp } from '@/lib/matches/format';
 import type { TeamMatches } from '@/lib/matches';
 
-interface Props { data: TeamMatches; tone?: 'light' | 'dark'; }
-const { data, tone = 'light' } = Astro.props;
-const { snapshot, source, stale } = data;
+interface Props { data: TeamMatches; }
+const { data } = Astro.props;
+const { snapshot, source, stale, embedCodes } = data;
 const lastSuccess = snapshot.sync.lastSuccessAt;
 ---
-<div class:list={['data-source', tone]}>
-  {source.method === 'embed'
-    ? <p>Fixtures, results and table are shown directly from <a href={source.url} rel="noopener">{source.name}</a>, the FA's official competition system, and update when the league publishes changes.</p>
+<div class="data-source">
+  {embedCodes
+    ? <p>Shown directly from <a href={source.url} rel="noopener">FA Full-Time</a>, the FA's official competition system, where the team is listed as {source.listedAs}.</p>
     : lastSuccess
-      ? <p>{source.attribution}. <a href={source.url} rel="noopener">View at {source.name}</a>. Last updated {stamp(lastSuccess)} (UK time). Results appear once the competition confirms them; this is not a live score service.</p>
-      : <p>Fixtures, results and the league table will be imported automatically from <a href={source.url} rel="noopener">{source.name}</a> once the club's data connection is switched on.</p>}
+      ? <p>{source.attribution}. Last updated {stamp(lastSuccess)} UK time. Results appear once the competition confirms them; this is not a live score service. <a href={source.officialTableUrl} rel="noopener">Official league table</a>.</p>
+      : <p>{source.league}. See the official <a href={source.officialFixturesUrl} rel="noopener">fixtures and results</a> and <a href={source.officialTableUrl} rel="noopener">league table</a>.</p>}
   {stale && (
     <p class="stale" role="status">
-      <strong>These details may be out of date.</strong> The latest update from {source.name} did not complete{lastSuccess ? `, so this page shows the information as it was at ${stamp(lastSuccess)}` : ''}. Please check <a href={source.url} rel="noopener">{source.name}</a> for the latest.
+      <strong>These details may be out of date.</strong> {lastSuccess ? `They were last updated at ${stamp(lastSuccess)}.` : ''} Please check the <a href={source.officialFixturesUrl} rel="noopener">official fixtures</a> for the latest.
     </p>
   )}
 </div>
 <style>
-  .data-source { font-size: .85rem; color: var(--muted); }
+  .data-source { font-size: .9rem; color: var(--muted); }
   .data-source p { margin: 0 0 .5rem; }
   .data-source a { color: var(--red); font-weight: 700; text-underline-offset: 3px; }
-  .data-source.dark { color: #cfcfcf; }
-  .data-source.dark a { color: #ff8591; }
   .stale { padding: .75rem 1rem; border-left: 4px solid #e0a100; color: var(--ink); background: #fff6db; }
-  .data-source.dark .stale { color: var(--ink); }
 </style>

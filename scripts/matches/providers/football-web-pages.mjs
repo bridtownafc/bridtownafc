@@ -4,20 +4,29 @@
 //   base URL     https://api.footballwebpages.co.uk/v2/
 //   auth         header "FWP-API-Key" (free for non-league clubs' official websites, by email request)
 //   rate limit   10 requests a minute; one sync uses 2
-//   endpoints    fixtures-results.json?team=ID   league-table.json?team=ID   competitions.json?include=teams
+//   endpoints    competitions.json?include=teams   fixtures-results.json?team=TEAM_ID
+//                league-table.json?comp=COMPETITION_ID
+// The numeric IDs are never guessed: `npm run matches:discover` lists them from the API once
+// a key is issued, and they are set as FWP_TEAM_ID and FWP_COMPETITION_ID.
 //
-// The documentation lists endpoints but not the JSON field names. RESPONSE_SHAPE below is
-// therefore UNVERIFIED until checked against the first real response (run
-// `npm run matches:sync -- --save-raw` once a key is set and compare .cache/matches/raw/).
-// Every response is validated against it: if it does not match, the sync fails, the
-// website keeps its last good data, and nothing is guessed.
+// IDs (from competitions.json, 16 Nov 2026): Bridlington Town = team 288, in competition 15
+// "Northern Premier League - East Division"; the fixtures run Aug 2026 to Apr 2027 (2026/27).
+//
+// The response shape below was VERIFIED on 16 Nov 2026 against real responses for team 288
+// (50 matches across the league, FA Cup, FA Trophy and East Riding Senior Cup) and
+// competition 15 (22 teams). Observed: fixtures not yet played carry 0-0 scores and a
+// kick-off status ("3pm" / "Kick off 3pm"), so scores are only used for finished matches;
+// played matches are "FT" / "Full Time"; postponed are "P" / "Match Postponed" with
+// postponed: true. Not yet seen in real data: in-play, abandoned, penalties, extra time.
+// Every response is still validated: if one does not match, the sync fails, the website
+// keeps its last good data, and nothing is guessed.
 import { z } from 'astro/zod';
 import { isClubName } from '../../../src/lib/matches/sources.ts';
 import { londonLocalToUtc } from '../../../src/lib/matches/model.ts';
 
 export const PROVIDER = 'football-web-pages';
 export const BASE_URL = 'https://api.footballwebpages.co.uk/v2/';
-export const SHAPE_VERIFIED = false;
+export const SHAPE_VERIFIED = true;
 
 export class SourceError extends Error {
   constructor(message, { raw, retryable = false } = {}) {
@@ -27,7 +36,7 @@ export class SourceError extends Error {
   }
 }
 
-// --- Expected response shape (UNVERIFIED, see above) ----------------------------------------
+// --- Response shape (verified 16 Nov 2026, see above) -----------------------------------------
 const side = z.object({ id: z.coerce.string(), name: z.string().min(1), score: z.coerce.number().int().nullable().optional() }).passthrough();
 const fwpMatch = z
   .object({
@@ -42,14 +51,16 @@ const fwpMatch = z
     penalties: z.object({ home: z.coerce.number().int(), away: z.coerce.number().int() }).nullable().optional(),
   })
   .passthrough();
-const fixturesResponse = z.object({ 'fixtures-results': z.object({ matches: z.array(fwpMatch) }).passthrough() }).passthrough();
+const fixturesResponse = z.object({
+  'fixtures-results': z.object({ team: z.object({ id: z.coerce.string(), name: z.string() }).passthrough(), matches: z.array(fwpMatch) }).passthrough(),
+}).passthrough();
 
 const record = z.object({ played: z.number().int(), won: z.number().int(), drawn: z.number().int(), lost: z.number().int(), for: z.number().int(), against: z.number().int() }).passthrough();
 const tableResponse = z
   .object({
     'league-table': z
       .object({
-        competition: z.object({ name: z.string().min(1) }).passthrough(),
+        competition: z.object({ id: z.coerce.string().optional(), name: z.string().min(1) }).passthrough(),
         teams: z.array(z.object({ position: z.number().int(), name: z.string().min(1), 'all-matches': record, 'total-points': z.number().int() }).passthrough()).min(2),
       })
       .passthrough(),
@@ -130,7 +141,7 @@ export function toTable(raw, { season, retrievedAt }) {
     season,
     effectiveAt: null,
     retrievedAt,
-    sourceUrl: 'https://www.footballwebpages.co.uk/bridlington-town/league-table',
+    sourceUrl: 'https://www.thenpl.co.uk/tables/east',
     automatic: true,
     sourceName: 'Football Web Pages',
     notes: null,
@@ -184,34 +195,56 @@ async function get(fetchImpl, endpoint, params, key) {
   throw lastError;
 }
 
+const ID = /^[0-9]{1,9}$/;
+
 /**
- * Fetches the team's fixtures, results and league table.
- * @returns {{ matches: object[], table: object|null, raw: object }}
+ * Fetches the team's fixtures and results (all competitions, league and cup) and the league
+ * table. Returns null when not configured. Without a competition ID the table is not fetched
+ * and the previous table is kept.
+ * @returns {Promise<{ matches: object[], table: object|null, raw: object } | null>}
  */
 export async function fetchTeam({ env, fetch: fetchImpl = fetch, season, now = new Date() }) {
   const key = env.FWP_API_KEY;
   const team = env.FWP_TEAM_ID;
+  const comp = env.FWP_COMPETITION_ID;
   if (!key || !team) return null;
+  if (!ID.test(team) || (comp && !ID.test(comp))) throw new SourceError('FWP_TEAM_ID and FWP_COMPETITION_ID must be the numeric IDs listed by `npm run matches:discover`.');
   const fixturesJson = await get(fetchImpl, 'fixtures-results.json', { team }, key);
-  const tableJson = await get(fetchImpl, 'league-table.json', { team }, key);
+  const tableJson = comp ? await get(fetchImpl, 'league-table.json', { comp }, key) : null;
   const raw = { fixtures: fixturesJson, table: tableJson };
   const fixtures = parse(fixturesResponse, fixturesJson, 'fixtures-results');
-  const table = parse(tableResponse, tableJson, 'league-table');
+  const table = tableJson ? parse(tableResponse, tableJson, 'league-table') : null;
+  // The answer must be about the team and competition asked for.
+  const answeredTeam = fixtures['fixtures-results'].team;
+  if (answeredTeam.id !== team || !isClubName(answeredTeam.name)) {
+    throw new SourceError(`Football Web Pages answered for team ${answeredTeam.id} (${answeredTeam.name}), not FWP_TEAM_ID ${team}`, { raw });
+  }
+  const answeredComp = table?.['league-table'].competition.id;
+  if (table && answeredComp && answeredComp !== comp) {
+    throw new SourceError(`Football Web Pages answered for competition ${answeredComp}, not FWP_COMPETITION_ID ${comp}`, { raw });
+  }
   return {
     matches: fixtures['fixtures-results'].matches.map(toMatch),
-    table: toTable(table, { season, retrievedAt: now.toISOString() }),
+    table: table ? toTable(table, { season, retrievedAt: now.toISOString() }) : null,
     raw,
   };
 }
 
-/** Lists competitions and teams whose name mentions Bridlington, to find FWP_TEAM_ID. */
+/**
+ * Lists Bridlington Town's team entries and the league competitions that include them, to
+ * find FWP_TEAM_ID and FWP_COMPETITION_ID. Competitions are named in "full-name".
+ */
 export async function discover({ env, fetch: fetchImpl = fetch }) {
   if (!env.FWP_API_KEY) throw new Error('Set FWP_API_KEY in .env first.');
   const json = await get(fetchImpl, 'competitions.json', { include: 'teams' }, env.FWP_API_KEY);
   const found = [];
-  JSON.stringify(json, (_key, v) => {
-    if (v && typeof v === 'object' && typeof v.name === 'string' && /bridlington/i.test(v.name)) found.push(v);
-    return v;
-  });
+  const seenTeams = new Set();
+  for (const competition of json?.competitions ?? []) {
+    for (const t of (competition.teams ?? []).filter((t) => isClubName(t.name ?? ''))) {
+      if (!seenTeams.has(t.id)) found.push({ kind: 'team', id: t.id, name: t.name });
+      seenTeams.add(t.id);
+      found.push({ kind: 'competition', id: competition.id, name: competition['full-name'] ?? competition['generic-name'], type: competition.type, teamId: t.id });
+    }
+  }
   return { found, raw: json };
 }

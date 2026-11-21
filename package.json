@@ -21,6 +21,7 @@
     "cms:listen": "node cms/scripts/rebuild-listener.mjs",
     "cms:test:rules": "node --test cms/tests/rules.test.mjs",
     "cms:test:photo": "node cms/tests/photo-change.integration.mjs",
+    "cms:test:publishing": "node cms/tests/player-publishing.integration.mjs",
     "test": "node --test \"tests/*.test.mjs\" \"cms/tests/*.test.mjs\"",
     "test:matches": "node --test tests/matches.test.mjs",
     "test:enquiry": "node --test tests/enquiry.test.mjs",
@@ -31,7 +32,8 @@
     "cms:enquiries": "node cms/scripts/enquiry-relay.mjs",
     "cms:admin": "node cms/scripts/admin-session.mjs",
     "cms:test:workflow": "node cms/scripts/admin-session.mjs workflow",
-    "images:partners": "node scripts/make-partner-logos.mjs"
+    "images:partners": "node scripts/make-partner-logos.mjs",
+    "cms:backup": "node cms/scripts/backup.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

@@ -1,16 +1,17 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
-import { TICKETS_URL, club, mapsHref, telHref } from '@/data/club';
+import { TICKETS_URL, club, clubStructuredData, mapsHref, telHref } from '@/data/club';
 ---
 <BaseLayout title="The Club | Bridlington Town AFC" description={`About Bridlington Town AFC, and matchday information for the ${club.groundName}: getting here, tickets and accessibility.`}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(clubStructuredData(Astro.site!))} />
   <PageHero eyebrow="Bridlington Town AFC" title="Proud of our past. Building our future." introduction="A football club rooted in its town, powered by its people and ambitious about what comes next." />
   <section class="section"><div class="shell grid-2">
     <article>
       <p class="eyebrow">Our club</p>
       <h2>Bridlington's team</h2>
       <p>From generations of supporters to the volunteers, players, staff and businesses carrying the club forward, Bridlington Town AFC belongs to the community around it.</p>
-      <p>The club's men's first team plays in the Northern Premier League East Division, and its women's first team represents the Seasiders in women's football.</p>
+      <p>The men's first team plays in the Pitching In Northern Premier League, East Division. The women's team, listed by the FA as Bridlington Town FC Rovers Ladies, plays in the East Riding County Women's Football League, Division 2.</p>
       <div class="cta-row"><a class="button" href="/mens/">Men's first team</a><a class="button outline" href="/womens/">Women's first team</a></div>
     </article>
     <div class="history-panel"><span>The Seasiders</span><p>Club history, honours and records will be published here once they have been checked against the club's records.</p></div>
@@ -22,8 +23,8 @@ import { TICKETS_URL, club, mapsHref, telHref } from '@/data/club';
       <div class="card">
         <h3>Getting here</h3>
         <p>Home matches are played at the <strong>{club.groundName}</strong>.</p>
-        <address>{club.address}</address>
-        <a class="card-link" href={mapsHref} rel="noopener">Open in Google Maps <span aria-hidden="true">→</span></a>
+        <address>{club.addressLines.map((line, i, all) => <>{line}{i < all.length - 1 && <br />}</>)}</address>
+        <a class="card-link" href={mapsHref} rel="noopener">Directions in Google Maps <span aria-hidden="true">→</span></a>
       </div>
       <div class="card">
         <h3>Tickets and admission</h3>

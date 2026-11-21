@@ -20,7 +20,7 @@ export const mensTeamNews: Story[] = [
   {
     category: 'Commercial',
     title: 'Put your business on the touchline',
-    summary: 'Discover year-round visibility through perimeter advertising at the Mounting Systems Stadium.',
+    summary: 'Discover year-round visibility through perimeter advertising at the HDM Energies Stadium.',
     link: { shared: '/commercial/' },
   },
   {

@@ -85,6 +85,22 @@ In that case bootstrap falls back to collection-level permissions (all fields) a
 - **Urgent changes:** fixtures, scores, league tables and announcements rebuild within about 5 seconds, plus build time (about 10–20 seconds for this site).
 - **Concurrency:** only one build runs at a time. Changes made during a build trigger one more build.
 - **Production:** the listener is replaced by the hosting provider's deploy hook. The CMS (`REBUILD_HOOK_URL`) needs no other change.
+- **Failures keep the live site.** `build:cms` syncs and builds into `.cache/cms-build/dist-next` and replaces `dist/` only when everything succeeded. A sync error, invalid content, a failed build or a locked folder leaves the previous website exactly as it was.
+- **Staff are told.** The extension follows each rebuild through the listener's `/status`. If the build containing someone's change fails, or the listener is not running, that person gets a **Website not updated** notification (bell icon in the admin) giving the reason, and saving again retries. After a failure, the next successful build sends **Website updated**. The listener's terminal shows the full log. A host deploy hook without `/status` is not followed.
+
+### Players on the website
+
+| CMS | Website |
+|---|---|
+| Person **Published** and team allocation **Active** (published), with no leaving date or one in the future | Listed on that team's squad page, with a profile page at `/<team>/team/<web address>/` |
+| Person in Draft or In review, allocation Inactive (draft) or Removed from team (archived), or leaving date passed | Not shown anywhere; any earlier profile page is removed at the next build |
+| Allocation order (drag in the team's Squad list) | Squad page order; profile Previous/Next follow it |
+| Squad number, position, captaincy (per allocation); biography, player sponsor (per person); photo | Shown when filled in. Empty fields are left out; nothing is guessed. Without a photo, the club crest is shown |
+| The same person in two teams | Listed once on each team, with that team's number and position |
+
+A leaving date takes effect at the next rebuild. Any CMS change, and the match-data scheduler every 6 hours, triggers one.
+
+Test the whole chain with one 2FA code: `npm run cms:admin -- --otp=123456 publishing`. It creates a temporary player and photo, checks the drafts, publishing, moving teams, the statuses, leaving, a deliberately failed build, and the staff notification, then removes everything.
 
 ## Local setup (native Windows, no Docker)
 

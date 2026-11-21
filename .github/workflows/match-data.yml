@@ -5,7 +5,7 @@
 # Each run fetches each team's source, keeps the last good data if a source fails, commits
 # src/data/matches/*.json when what the website shows has changed, and calls the hosting
 # provider's deploy hook so the rebuilt site goes live.
-# Secrets: FWP_API_KEY, FWP_TEAM_ID (Football Web Pages), DEPLOY_HOOK_URL (hosting provider).
+# Secrets: FWP_API_KEY, FWP_TEAM_ID, FWP_COMPETITION_ID (Football Web Pages), DEPLOY_HOOK_URL (hosting provider).
 name: Match data
 
 on:
@@ -37,6 +37,7 @@ jobs:
         env:
           FWP_API_KEY: ${{ secrets.FWP_API_KEY }}
           FWP_TEAM_ID: ${{ secrets.FWP_TEAM_ID }}
+          FWP_COMPETITION_ID: ${{ secrets.FWP_COMPETITION_ID }}
         run: |
           set +e
           node scripts/matches/sync.mjs | tee sync.log

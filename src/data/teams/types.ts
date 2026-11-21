@@ -13,11 +13,22 @@ export interface SquadPhoto {
   description: string;
 }
 
+export const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'] as const;
+export type Position = (typeof POSITIONS)[number];
+
 export interface Player {
   slug: string;
   name: string;
   /** Absent until an approved photo is supplied; the club logo is shown instead. */
   photo?: SquadPhoto;
+  /** Squad number, position and biography: shown only when the club has entered them in the CMS. */
+  number?: number;
+  position?: Position;
+  /** Markdown. */
+  biography?: string;
+  captaincy?: 'captain' | 'vice_captain';
+  /** The player's sponsor; the link is shown only for a full web address. */
+  sponsor?: { name: string; url?: string };
 }
 
 export interface Story {

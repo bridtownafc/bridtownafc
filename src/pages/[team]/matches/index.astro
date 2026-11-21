@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
-import EmptyState from '@/components/EmptyState.astro';
 import MatchList from '@/components/MatchList.astro';
 import LeagueTable from '@/components/LeagueTable.astro';
 import FullTimeEmbed from '@/components/FullTimeEmbed.astro';
@@ -17,11 +16,16 @@ export function getStaticPaths() {
 const teamId = Astro.params.team as TeamId;
 const team = teams[teamId];
 const data = teamMatches(teamId);
+const { source } = data;
 const embed = data.embedCodes;
 const season = data.snapshot.season;
 const sells = TICKETED_TEAMS.includes(teamId);
+const synced = Boolean(data.snapshot.sync.lastSuccessAt);
+// Separate fixtures/results snippets take their own sections; a combined one sits under Fixtures.
+const fixturesCode = embed?.fixtures || embed?.fixturesResults;
+const resultsCode = embed?.results || '';
 ---
-<BaseLayout team={teamId} section="matches" title={`Fixtures, Results and Table | ${team.name} | Bridlington Town AFC`} description={`Bridlington Town AFC ${team.phrase} fixtures, results and league table for the ${season} season, with kick-off times in UK time.`}>
+<BaseLayout team={teamId} section="matches" title={`Fixtures, Results and Table | ${team.name} | Bridlington Town AFC`} description={`Bridlington Town AFC ${team.phrase} fixtures, results and ${source.league} table for ${season}.`}>
   <PageHero eyebrow={`${team.name} · ${season}`} title="Match Centre" introduction={team.matches.introduction} />
   <section class="section match-centre-page">
     <div class="shell">
@@ -35,21 +39,23 @@ const sells = TICKETED_TEAMS.includes(teamId);
       )}
 
       <section id="fixtures" class="block" aria-labelledby="fixtures-title">
-        <h2 id="fixtures-title">Fixtures</h2>
-        {embed?.fixtures
-          ? <FullTimeEmbed code={embed.fixtures} title="Fixtures" source={data.source} />
+        <h2 id="fixtures-title">{fixturesCode && !resultsCode && embed?.fixturesResults ? 'Fixtures and results' : 'Fixtures'}</h2>
+        {fixturesCode
+          ? <FullTimeEmbed code={fixturesCode} title={embed?.fixtures ? 'Fixtures' : 'Fixtures and results'} source={source} />
           : data.fixtures.length
             ? <MatchList matches={data.fixtures} team={teamId} kind="fixtures" />
-            : <EmptyState headingLevel="h3" title="No fixtures to show" text={data.snapshot.sync.lastSuccessAt ? `There are no upcoming ${team.phrase} fixtures published by ${data.source.name} at the moment.` : `${team.name} fixtures will appear here once the club's data connection to ${data.source.name} is in place.`} />}
+            : <p class="unavailable">{synced ? 'No upcoming fixtures have been published.' : 'Fixtures are not available here yet.'} <a href={source.officialFixturesUrl} rel="noopener">See the official fixtures</a>.</p>}
       </section>
 
       <section id="results" class="block" aria-labelledby="results-title">
         <h2 id="results-title">Results</h2>
-        {embed?.results
-          ? <FullTimeEmbed code={embed.results} title="Results" source={data.source} />
-          : data.results.length
-            ? <MatchList matches={data.results} team={teamId} kind="results" />
-            : <EmptyState headingLevel="h3" title="No results to show" text={data.snapshot.sync.lastSuccessAt ? `No ${team.phrase} results have been confirmed for ${season} yet.` : `Confirmed ${team.phrase} results will appear here once the club's data connection to ${data.source.name} is in place.`} />}
+        {resultsCode
+          ? <FullTimeEmbed code={resultsCode} title="Results" source={source} />
+          : fixturesCode
+            ? <p class="unavailable">Results are included in the fixtures and results above.</p>
+            : data.results.length
+              ? <MatchList matches={data.results} team={teamId} kind="results" />
+              : <p class="unavailable">{synced ? `No results have been confirmed for ${season} yet.` : 'Results are not available here yet.'} <a href={source.officialFixturesUrl} rel="noopener">See the official results</a>.</p>}
         {data.other.length > 0 && (
           <div class="other">
             <h3>Cancelled, abandoned or void</h3>
@@ -60,11 +66,12 @@ const sells = TICKETED_TEAMS.includes(teamId);
 
       <section id="table" class="block" aria-labelledby="table-title">
         <h2 id="table-title">League table</h2>
+        <p class="league-name">{source.league}</p>
         {embed?.table
-          ? <FullTimeEmbed code={embed.table} title="League table" source={data.source} />
+          ? <FullTimeEmbed code={embed.table} title="League table" source={source} href={source.officialTableUrl} />
           : data.table
             ? <LeagueTable table={data.table} />
-            : <EmptyState headingLevel="h3" title="Table not available yet" text={`The ${data.source.league ?? 'league'} table for the ${team.phrase} will appear here once it is available from ${data.source.name}.`} />}
+            : <p class="unavailable">The table is not available here yet. <a href={source.officialTableUrl} rel="noopener">See the official league table</a>.</p>}
       </section>
     </div>
   </section>
@@ -77,5 +84,8 @@ const sells = TICKETED_TEAMS.includes(teamId);
   .tickets-note p { margin: 0; }
   .block { padding-top: 3rem; scroll-margin-top: 4rem; }
   .block h2 { font-size: clamp(2.2rem, 5vw, 3.6rem); }
+  .league-name { margin-top: -.5rem; color: var(--muted); font-weight: 700; }
+  .unavailable { max-width: 760px; padding: 1.25rem 1.5rem; border-left: 5px solid var(--red); background: var(--mist); }
+  .unavailable a { color: var(--red); font-weight: 800; }
   .other { margin-top: 2.5rem; }
 </style>

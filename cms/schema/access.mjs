@@ -2,7 +2,7 @@
 // Bootstrap owns these policies: their permissions are replaced on every run, so this
 // file is the single source of truth. Approval rules are enforced a second time by
 // cms/extensions/brid-publishing, independent of licence tier.
-import { MATCH_ARTICLE_CATEGORIES } from '../extensions/brid-publishing/rules.js';
+import { ENQUIRY_TOPICS, MATCH_ARTICLE_CATEGORIES } from '../extensions/brid-publishing/rules.js';
 
 const CRUD = ['create', 'read', 'update', 'delete'];
 
@@ -19,6 +19,10 @@ const allow = (collection, actions, { filter = null, validation = null, fields =
 
 const ME = '$CURRENT_USER';
 const notLive = { status: { _neq: 'published' } };
+
+/** Read and update website enquiries about a role's topics. No delete: Club Admins delete them. */
+const ENQUIRY_FIELDS = ['id', 'topic', 'handling', 'name', 'organisation', 'email', 'phone', 'message', 'consent', 'page', 'internal_notes', 'date_created'];
+const enquiriesAbout = (role) => allow('enquiries', ['read', 'update'], { filter: { topic: { _in: ENQUIRY_TOPICS[role] } }, fields: ENQUIRY_FIELDS });
 const unpublished = { status: { _in: ['draft', 'in_review'] } };
 
 export const CONTENT_COLLECTIONS = [
@@ -78,10 +82,12 @@ export const POLICIES = {
     app_access: true,
     admin_access: false,
     enforce_tfa: false,
-    permissions: ['articles', 'announcements', 'events'].flatMap((c) => [
-      ...allow(c, ['create', 'read', 'update']),
-      ...allow(c, ['delete'], { filter: notLive }),
-    ]),
+    permissions: [
+      ...['articles', 'announcements', 'events'].flatMap((c) => [
+        ...allow(c, ['create', 'read', 'update']),
+        ...allow(c, ['delete'], { filter: notLive }),
+      ]),
+    ],
   },
 
   'Football Editor': {
@@ -95,6 +101,8 @@ export const POLICIES = {
         ...allow(c, ['create', 'read', 'update']),
         ...allow(c, ['delete'], { filter: c === 'league_table_rows' ? null : notLive }),
       ]),
+      // Team details and squad lists (adding a player from a team saves the team). Not create/delete.
+      ...allow('teams', ['update']),
       ...allow('seasons', ['create', 'update']),
       ...allow('competitions', ['create', 'update']),
       ...allow('articles', ['create', 'read', 'update'], {
@@ -126,8 +134,8 @@ export const POLICIES = {
         validation: { _and: [{ area: { _eq: 'commercial' } }, unpublished] },
       }),
       ...allow('pages', ['delete'], { filter: { _and: [{ area: { _eq: 'commercial' } }, unpublished] } }),
-      // Commercial enquiries from the website form; other topics are for Club Admins.
-      ...allow('enquiries', ['read', 'update'], { filter: { topic: { _eq: 'commercial' } }, fields: ['id', 'topic', 'handling', 'name', 'organisation', 'email', 'phone', 'message', 'consent', 'page', 'internal_notes', 'date_created'] }),
+      // Commercial enquiries from the website form (see ENQUIRY_TOPICS); the rest go to other roles.
+      ...enquiriesAbout('Commercial Editor'),
     ],
   },
 
@@ -152,8 +160,8 @@ export const POLICIES = {
       ...allow('site_settings', ['read']),
       ...REFERENCE_COLLECTIONS.flatMap((c) => allow(c, ['read'])),
       ...allow('competitions', ['read'], { filter: { status: { _eq: 'published' } } }),
-      ...allow('people', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'display_name', 'slug', 'photo', 'photo_description', 'photo_crop', 'biography'] }),
-      ...allow('squad_memberships', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'person', 'season', 'kind', 'shirt_number', 'position', 'staff_title', 'left_on', 'sort'] }),
+      ...allow('people', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'display_name', 'slug', 'photo', 'photo_description', 'photo_crop', 'biography', 'sponsor_name', 'sponsor_url'] }),
+      ...allow('squad_memberships', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'person', 'season', 'kind', 'shirt_number', 'position', 'captaincy', 'staff_title', 'left_on', 'sort'] }),
       ...allow('fixtures', ['read'], { filter: { status: { _eq: 'published' } }, fields: ['id', 'status', 'team', 'competition', 'season', 'opponent', 'opponent_badge', 'venue_type', 'venue', 'kickoff', 'match_status', 'score_for', 'score_against', 'attendance', 'source_match_id', 'public_note'] }),
       ...allow('league_tables', ['read'], { filter: { status: { _eq: 'published' } } }),
       ...allow('league_table_rows', ['read'], { filter: { league_table: { status: { _eq: 'published' } } } }),

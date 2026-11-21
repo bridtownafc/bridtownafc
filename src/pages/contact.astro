@@ -2,9 +2,10 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PageHero from '@/components/PageHero.astro';
 import EnquiryForm from '@/components/EnquiryForm.astro';
-import { TICKETS_URL, club, mapsHref, telHref } from '@/data/club';
+import { TICKETS_URL, club, clubStructuredData, mapsHref, telHref } from '@/data/club';
 ---
 <BaseLayout title="Contact | Bridlington Town AFC" description="Contact Bridlington Town AFC about sponsorship, matchdays, tickets, football and community activity.">
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(clubStructuredData(Astro.site!))} />
   <PageHero eyebrow="Get in touch" title="Contact the club" introduction="Send us a message and it will reach the right person at the club." />
   <section class="section"><div class="shell contact-grid">
     <div class="details">
@@ -12,7 +13,7 @@ import { TICKETS_URL, club, mapsHref, telHref } from '@/data/club';
       <dl>
         <div><dt>Telephone</dt><dd><a href={telHref(club.contactPhone)}>{club.contactPhone}</a></dd></div>
         {club.contactEmail && <div><dt>Email</dt><dd><a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></dd></div>}
-        <div><dt>Ground</dt><dd><address>{club.address.split(', ').map((line, i, all) => <>{line}{i < all.length - 1 && <br />}</>)}</address><a href={mapsHref} rel="noopener">Open in Google Maps</a></dd></div>
+        <div><dt>Ground</dt><dd><address>{club.addressLines.map((line, i, all) => <>{line}{i < all.length - 1 && <br />}</>)}</address><a href={mapsHref} rel="noopener">Directions in Google Maps</a></dd></div>
         <div><dt>Tickets</dt><dd><a href={TICKETS_URL} rel="noopener">Club ticket website</a></dd></div>
       </dl>
       <h2 class="routes-title">Quick routes</h2>

@@ -3,6 +3,13 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File cms\scripts\windows\stop-cms.ps1
 . "$PSScriptRoot\CmsCommon.ps1"
 
+foreach ($name in $WebsiteServices.Keys) {
+    Write-Step $WebsiteServices[$name].Title
+    $node = Get-ProjectNode
+    if (-not (Get-TrackedProcess $name $node)) { $found = Find-ScriptProcess $WebsiteServices[$name].Script; if ($found) { Save-TrackedProcess $name $found } }
+    Stop-TrackedProcess $name $node
+}
+
 Write-Step 'Directus'
 Stop-TrackedProcess 'directus' $Node22
 

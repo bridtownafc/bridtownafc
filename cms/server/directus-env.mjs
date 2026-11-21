@@ -64,8 +64,13 @@ export function directusEnv(secrets, runtimeDir) {
 
     // Extensions from the repository; brid-publishing calls the local rebuild listener.
     EXTENSIONS_PATH: path.join(CMS_DIR, 'extensions'),
-    EXTENSIONS_AUTO_RELOAD: 'true',
+    // Off: a live reload re-reads index.js but not the rules.js it imports, so a change could
+    // silently unload the publishing rules. Restart Directus after changing the extension.
+    EXTENSIONS_AUTO_RELOAD: 'false',
     REBUILD_HOOK_URL: `http://127.0.0.1:${PORTS.rebuild}/rebuild`,
     REBUILD_HOOK_SECRET: need('REBUILD_HOOK_SECRET'),
+    // Which website a successful rebuild updates, named in staff notifications. This
+    // setup only ever updates the local preview; production sets "production".
+    WEBSITE_ENVIRONMENT: secrets.WEBSITE_ENVIRONMENT || 'local',
   };
 }

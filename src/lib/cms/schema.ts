@@ -17,6 +17,12 @@ const player = z
     slug,
     name: z.string().trim().min(1),
     photo: z.object({ original: z.string().min(1), description: z.string().trim().min(1) }).strict().optional(),
+    number: z.number().int().min(1).max(99).optional(),
+    position: z.enum(['Goalkeeper', 'Defender', 'Midfielder', 'Forward']).optional(),
+    /** Markdown. */
+    biography: z.string().trim().min(1).optional(),
+    captaincy: z.enum(['captain', 'vice_captain']).optional(),
+    sponsor: z.object({ name: z.string().trim().min(1), url: z.string().regex(/^https?:\/\/\S+$/).optional() }).strict().optional(),
   })
   .strict();
 
@@ -108,7 +114,7 @@ const teamMatchData = z
   .object({
     overrides: z.array(matchOverride),
     table: manualTable.nullable(),
-    fulltimeCodes: z.object({ fixtures: z.string(), results: z.string(), table: z.string() }).strict(),
+    fulltimeCodes: z.object({ table: z.string(), fixturesResults: z.string(), fixtures: z.string(), results: z.string() }).strict(),
   })
   .strict();
 

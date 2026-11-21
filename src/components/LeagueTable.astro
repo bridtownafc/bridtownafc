@@ -12,18 +12,17 @@ const rows = around === undefined ? table.rows : (() => {
   return table.rows.slice(start, start + around * 2 + 1);
 })();
 const compact = around !== undefined;
-const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
+// A true minus sign keeps negative goal differences readable and aligned.
+const sign = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
+const source = table.automatic
+  ? `${table.competition} ${table.season}. From ${table.sourceName}, updated ${stamp(table.retrievedAt)}.`
+  : `${table.competition} ${table.season}. Entered by the club${table.effectiveAt ? `, correct at ${stamp(table.effectiveAt)}` : ''}. Not updated automatically.${table.notes ? ` Source: ${table.notes}.` : ''}`;
 ---
-<div class:list={['table-wrap', tone]} tabindex="0" role="region" aria-label={`${table.competition} table`}>
+{caption && <p class:list={['table-source', tone]} aria-hidden="true">{source}</p>}
+{!compact && <p class:list={['scroll-hint', tone]} aria-hidden="true">Swipe the table sideways to see every column.</p>}
+<div class:list={['table-wrap', tone, compact ? 'compact' : 'full']} tabindex="0" role="region" aria-label={`${table.competition} table`}>
   <table>
-    {caption && (
-      <caption>
-        {table.competition} {table.season}.
-        {table.automatic
-          ? <> From {table.sourceName}, updated {stamp(table.retrievedAt)}.</>
-          : <> Entered by the club{table.effectiveAt ? `, correct at ${stamp(table.effectiveAt)}` : ''}. Not updated automatically.{table.notes ? ` Source: ${table.notes}.` : ''}</>}
-      </caption>
-    )}
+    {caption && <caption class="visually-hidden">{source}</caption>}
     <thead>
       <tr>
         <th scope="col"><abbr title="Position">Pos</abbr></th>
@@ -52,7 +51,9 @@ const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
   .table-wrap { overflow-x: auto; }
   .table-wrap:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  caption { padding: 0 0 .75rem; color: var(--muted); font-size: .82rem; text-align: left; }
+  .table-source { margin: 0; padding: 0 0 .75rem; color: var(--muted); font-size: .82rem; }
+  .scroll-hint { display: none; margin: 0 0 .5rem; color: var(--muted); font-size: .78rem; }
+  .table-source.dark, .scroll-hint.dark { color: #b5b5b5; }
   th, td { padding: .7rem .6rem; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
   thead th { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
   abbr { text-decoration: none; }
@@ -65,4 +66,19 @@ const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
   .dark caption, .dark thead th { color: #b5b5b5; }
   .dark th, .dark td { border-top-color: #373737; }
   .dark tbody th { color: #fff; }
+  /* Narrow screens: the homepage extract fits without scrolling; long names wrap. */
+  @media (max-width: 480px) {
+    .compact th, .compact td { padding-inline: .35rem; }
+    .compact .team-col { width: 100%; white-space: normal; }
+    .compact tbody th :global(.row-badge) { width: 22px; height: 20px; margin-right: .35rem; }
+  }
+  /* Narrow screens: the full table scrolls inside its box while position and team stay in view. */
+  @media (max-width: 760px) {
+    .scroll-hint { display: block; }
+    .full th:first-child, .full td:first-child { position: sticky; left: 0; z-index: 1; width: 2.6rem; min-width: 2.6rem; }
+    .full .team-col { position: sticky; left: 2.6rem; z-index: 1; box-shadow: 6px 0 6px -6px rgba(0, 0, 0, .25); }
+    .full.light th:first-child, .full.light td:first-child, .full.light .team-col { background: var(--paper, #fff); }
+    .full.dark th:first-child, .full.dark td:first-child, .full.dark .team-col { background: var(--ink); }
+    .full .club th, .full .club td { background: var(--red) !important; }
+  }
 </style>

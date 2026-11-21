@@ -18,28 +18,28 @@ if (Test-PostgresRunning) {
     if ($code -ne 0) { throw "PostgreSQL did not start. See $LogDir\postgres.log" }
     Write-Ok 'started'
 }
-$env:PGPASSWORD = $cmsEnv['DB_PASSWORD']
+# Checked with Node rather than psql.exe, which Windows Smart App Control blocks.
+Push-Location $ServerDir
 try {
-    $psql = Join-Path $PgBin 'psql.exe'
-    $exists = & $psql -h 127.0.0.1 -p $Ports.PostgreSQL -U directus -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'directus'"
-    if ($LASTEXITCODE -ne 0) { throw 'Could not connect to PostgreSQL with the credentials in cms/.env.' }
-    if ($exists -ne '1') {
-        & (Join-Path $PgBin 'createdb.exe') -h 127.0.0.1 -p $Ports.PostgreSQL -U directus -E UTF8 directus
-        if ($LASTEXITCODE -ne 0) { throw 'Could not create the directus database.' }
-        Write-Ok 'created database "directus"'
-    }
-    $version = & $psql -h 127.0.0.1 -p $Ports.PostgreSQL -U directus -d directus -tAc 'SHOW server_version'
-    Write-Ok "connected to database ""directus"" (PostgreSQL $version) with the cms/.env credentials"
-} finally { Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue }
+    $version = & $Node22 'check-db.mjs'
+    if ($LASTEXITCODE -ne 0) { $version; throw 'Could not connect to PostgreSQL with the credentials in cms/.env.' }
+} finally { Pop-Location }
+Write-Ok "connected to database ""directus"" (PostgreSQL $($version -join ' ')) with the cms/.env credentials"
 
 Write-Step 'Mailpit (local email inbox)'
 if (Get-TrackedProcess 'mailpit' $MailpitExe) {
     Write-Ok 'already running'
 } else {
-    $mailpit = Start-Detached $MailpitExe "--listen 127.0.0.1:$($Ports.Mailpit) --smtp 127.0.0.1:$($Ports.'Mailpit SMTP')" $CmsHome (Join-Path $LogDir 'mailpit.log')
-    Save-TrackedProcess 'mailpit' $mailpit
-    if (-not (Wait-HttpOk "http://127.0.0.1:$($Ports.Mailpit)/livez" 20)) { throw "Mailpit did not start. See $LogDir\mailpit.log" }
-    Write-Ok 'started'
+    # Optional: only needed for password-reset and invite emails. Smart App Control
+    # may block the unsigned mailpit.exe, so a failure here does not stop the admin.
+    try {
+        $mailpit = Start-Detached $MailpitExe "--listen 127.0.0.1:$($Ports.Mailpit) --smtp 127.0.0.1:$($Ports.'Mailpit SMTP')" $CmsHome (Join-Path $LogDir 'mailpit.log')
+        Save-TrackedProcess 'mailpit' $mailpit
+        if (-not (Wait-HttpOk "http://127.0.0.1:$($Ports.Mailpit)/livez" 20)) { throw 'no response' }
+        Write-Ok 'started'
+    } catch {
+        Write-Host "   skipped: Mailpit could not start (Windows may be blocking mailpit.exe). Admin sign-in still works; emails will not be delivered." -ForegroundColor Yellow
+    }
 }
 
 Write-Step 'Directus'
@@ -63,12 +63,33 @@ if ((Get-TrackedProcess 'directus' $Node22) -and (Wait-HttpOk "http://127.0.0.1:
     Write-Ok 'started'
 }
 
+foreach ($name in $WebsiteServices.Keys) {
+    $service = $WebsiteServices[$name]
+    Write-Step $service.Title
+    $node = Get-ProjectNode
+    $running = Get-TrackedProcess $name $node
+    if (-not $running) { $running = Find-ScriptProcess $service.Script; if ($running) { Save-TrackedProcess $name $running } }
+    if ($running) { Write-Ok "already running (process $($running.Id))"; continue }
+    $process = Start-Detached $node $service.Script $RepoRoot (Join-Path $LogDir "$name.log")
+    Save-TrackedProcess $name $process
+    Write-Ok "started (log: $(Join-Path $LogDir "$name.log"))"
+}
+if (-not (Wait-HttpOk "http://127.0.0.1:$($Ports.'Rebuild listener')/status" 20)) { Write-Warning "The rebuild listener is not answering; see $(Join-Path $LogDir 'rebuild-listener.log')" }
+
 Write-Step 'Network exposure check'
-foreach ($name in $Ports.Keys) { Assert-LocalOnly $name $Ports[$name] }
+foreach ($name in $Ports.Keys) {
+    if ($name -like 'Mailpit*' -and (Get-Listeners $Ports[$name]).Count -eq 0) { continue }  # optional, may be blocked
+    Assert-LocalOnly $name $Ports[$name]
+}
 
 Write-Host ''
 Write-Host "Staff admin dashboard:  http://localhost:$($Ports.Directus)/admin" -ForegroundColor Green
-Write-Host "Local email inbox:      http://localhost:$($Ports.Mailpit)"
+if ((Get-Listeners $Ports.Mailpit).Count -gt 0) {
+    Write-Host "Local email inbox:      http://localhost:$($Ports.Mailpit)"
+} else {
+    Write-Host 'Local email inbox:      not running (password-reset and invite emails are not sent)' -ForegroundColor Yellow
+}
+Write-Host "Local website preview:  npm run preview (serves the last successful CMS build in dist/)"
 Write-Host "Super Admin sign-in:    $($cmsEnv['ADMIN_EMAIL']) (password: ADMIN_PASSWORD in cms\.env)"
 Write-Host "Logs:                   $LogDir"
 Write-Host 'Stop with:              cms\scripts\windows\stop-cms.ps1'

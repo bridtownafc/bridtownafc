@@ -65,7 +65,8 @@ const collection = (name, meta, fields, { publishable = true } = {}) => ({
   collection: name,
   meta: {
     accountability: 'all',
-    versioning: publishable,
+    // Draft versions only where approvals need them; elsewhere Website status is the one control.
+    versioning: publishable && ['sponsors', 'sponsorship_packages', 'pages', 'announcements'].includes(name),
     ...(publishable ? { archive_field: 'status', archive_value: 'archived', unarchive_value: 'draft' } : {}),
     ...(fields.some((f) => f.field === 'sort') ? { sort_field: 'sort' } : {}),
     ...meta,
@@ -85,6 +86,17 @@ const LINK_TARGETS = [
 
 export const ARTICLE_CATEGORIES = ['Club news', 'Match report', 'Match preview', 'Player news', 'Commercial', 'Community', 'Events', 'Statement'];
 
+// FA Full-Time code snippets (Full-Time Admin > Media > Code Snippets). All optional.
+const FULLTIME_CODE_FIELDS = [
+  ['table', 'League table'],
+  ['fixtures_results', 'Team fixtures and results (combined)'],
+  ['fixtures', 'Upcoming fixtures (if supplied separately)'],
+  ['results', 'Recent results (if supplied separately)'],
+].map(([kind, label]) =>
+  longText(`fulltime_${kind}_code`, {
+    note: `${label}: paste the whole FA Full-Time code snippet, or just its number. Leave empty if not supplied.`,
+  }));
+
 export const COLLECTIONS = [
   collection('site_settings', { singleton: true, icon: 'settings', note: 'Club-wide contact details and social links.', group: null }, [
     required('club_name', { width: 'half' }, { default_value: 'Bridlington Town AFC' }),
@@ -102,13 +114,7 @@ export const COLLECTIONS = [
     required('key', { width: 'half', readonly: true, note: 'Used in website addresses (/mens/, /womens/).' }, { is_unique: true }),
     required('name', { width: 'half' }),
     integer('placeholder_cards', { width: 'half', note: '"Player to be confirmed" cards shown after the named players.' }, { default_value: 0, is_nullable: false }),
-    ...['fixtures', 'results', 'table'].map((kind) =>
-      text(`fulltime_${kind}_code`, {
-        width: 'full',
-        note: `FA Full-Time website widget code for ${kind === 'table' ? 'the league table' : kind}: the number in "var lrcode = '…'" from Full-Time's "Code for your website". Leave empty if this team's data comes from another source.`,
-        validation: { [`fulltime_${kind}_code`]: { _regex: '^[0-9]{5,12}$' } },
-        validation_message: 'Numbers only, as shown in the Full-Time code.',
-      })),
+    ...FULLTIME_CODE_FIELDS,
     SORT,
   ], { publishable: false }),
 
@@ -289,6 +295,11 @@ export const FIELD_UPDATES = [
   // Prices are no longer shown on the website, so they are optional and internal.
   { collection: 'sponsorship_packages', field: 'price_label', meta: { required: false, note: 'Internal only. Prices are never shown on the website; visitors are asked to contact the club.' }, schema: { is_nullable: true } },
   { collection: 'sponsorship_packages', field: 'price_amount', meta: { note: 'Internal only, for reporting. Never shown on the website.' } },
+  // Full-Time codes were numbers-only strings; staff now paste whole snippets, which need a
+  // longer text column and no numbers-only validation. The website extracts the number.
+  ...FULLTIME_CODE_FIELDS
+    .filter((f) => f.field !== 'fulltime_fixtures_results_code')
+    .map((f) => ({ collection: 'teams', field: f.field, type: f.type, meta: { ...f.meta, validation: null, validation_message: null } })),
 ];
 export const COLLECTION_UPDATES = [
   { collection: 'sponsorship_packages', meta: { display_template: '{{title}}' } },

@@ -3,6 +3,7 @@
 // portable Node 22 (Directus's isolated-vm has prebuilt Windows binaries for Node 22).
 // Usage: node run-directus.mjs <command> [...args]
 import { existsSync, readFileSync } from 'node:fs';
+import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import { directusEnv } from './directus-env.mjs';
@@ -11,6 +12,16 @@ const envFile = fileURLToPath(new URL('../.env', import.meta.url));
 if (!existsSync(envFile)) throw new Error('cms/.env not found. Run `npm run cms:env` first.');
 const runtimeDir = process.env.BRIDTOWN_CMS_HOME;
 if (!runtimeDir) throw new Error('BRIDTOWN_CMS_HOME is not set; start Directus with cms/scripts/windows/start-cms.ps1.');
+
+// Smart App Control blocks the unsigned isolated-vm and rolldown add-ons; load a
+// stub instead (see blocked-addons.cjs).
+const stub = new URL('./blocked-addons.cjs', import.meta.url).href;
+registerHooks({
+  resolve: (specifier, context, next) =>
+    specifier === 'isolated-vm' || specifier === 'rolldown'
+      ? { url: stub, format: 'commonjs', shortCircuit: true }
+      : next(specifier, context),
+});
 
 Object.assign(process.env, directusEnv(parseEnv(readFileSync(envFile, 'utf8')), runtimeDir));
 

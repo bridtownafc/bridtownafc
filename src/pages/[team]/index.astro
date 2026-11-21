@@ -91,7 +91,7 @@ const hasSocial = Object.values(club.social).some(Boolean);
   .hero-copy { max-width: 650px; color: #eee; font-size: 1.15rem; }
   .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
   .match-centre { padding: 0 0 3rem; }
-  .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; max-width: 1000px; }
+  .match-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; max-width: 1000px; }
   .quick-strip { border-bottom: 1px solid var(--line); background: #fff; }
   .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
   .quick-grid a { display: grid; min-height: 120px; align-content: center; padding: 1.25rem; border-right: 1px solid var(--line); border-top: 4px solid transparent; text-decoration: none; }
@@ -103,7 +103,7 @@ const hasSocial = Object.values(club.social).some(Boolean);
   .news-layout > :global(:not(.featured)) { grid-column: 2; }
   .news-layout > :global(.featured) { grid-row: span 2; }
   .season-section { background: var(--mist); }
-  .season-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .season-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
   .community-panel { padding: clamp(1.5rem, 4vw, 3rem); border-top: 5px solid var(--red); background: #fff; }
   .commercial-callout { position: relative; overflow: hidden; color: #fff; background: var(--red); }
   .commercial-grid { position: relative; display: grid; grid-template-columns: 1.3fr .7fr; align-items: end; gap: 4rem; }
@@ -114,7 +114,7 @@ const hasSocial = Object.values(club.social).some(Boolean);
   @media (max-width: 850px) {
     .hero-content { grid-template-columns: 120px 1fr; gap: 1.5rem; }
     .hero-content :global(.hero-badge) { width: 120px; }
-    .match-grid, .season-grid, .commercial-grid, .social-grid, .news-layout { grid-template-columns: 1fr; }
+    .match-grid, .season-grid, .commercial-grid, .social-grid, .news-layout { grid-template-columns: minmax(0, 1fr); }
     .news-layout > :global(*) { grid-column: auto !important; grid-row: auto !important; }
     .quick-grid { grid-template-columns: 1fr 1fr; }
   }

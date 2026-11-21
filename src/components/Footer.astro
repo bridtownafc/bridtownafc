@@ -14,7 +14,7 @@ const squadLabel = teamText(ctx, { mens: "Men's first team squad", womens: "Wome
       <Logo tone="dark" alt="Bridlington Town AFC club crest" sizes="105px" class="footer-badge" />
       <div class="footer-brand">Bridlington Town AFC</div>
       <p>Football at the heart of the Bridlington community.</p>
-      <address class="footer-contact">{club.address}<br /><a href={telHref(club.contactPhone)}>{club.contactPhone}</a>{club.contactEmail && <><br /><a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></>}</address>
+      <address class="footer-contact">{club.addressLines.map((line) => <>{line}<br /></>)}<a href={telHref(club.contactPhone)}>{club.contactPhone}</a>{club.contactEmail && <><br /><a href={`mailto:${club.contactEmail}`}>{club.contactEmail}</a></>}</address>
     </div>
     <div>
       <h2>Matchday</h2>

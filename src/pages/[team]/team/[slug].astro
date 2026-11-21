@@ -1,7 +1,8 @@
 ---
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PlayerPhoto from '@/components/PlayerPhoto.astro';
-import { TEAM_IDS, profileHref, sectionHref, teams, type Player, type TeamId } from '@/data/teams';
+import { CAPTAINCY_LABELS, TEAM_IDS, profileHref, sectionHref, teams, type Player, type TeamId } from '@/data/teams';
 
 export function getStaticPaths() {
   // Only teams with confirmed players get profile pages; an empty squad produces none.
@@ -23,8 +24,14 @@ interface Props { teamId: TeamId; player: Player; previous: Player; next: Player
 const { teamId, player, previous, next } = Astro.props;
 const team = teams[teamId];
 const squadHref = `${sectionHref(teamId, 'team')}#squad`;
+// Raw HTML in a biography is shown as text, never run: only Markdown formatting is applied.
+const processor = await createMarkdownProcessor({ syntaxHighlight: false });
+const biography = player.biography ? (await processor.render(player.biography.replace(/</g, '&lt;'))).code : null;
+const missing = [!player.position && 'position', player.number === undefined && 'squad number', !biography && 'biography', 'statistics'].filter(Boolean) as string[];
+const missingText = missing.length > 1 ? `${missing.slice(0, -1).join(', ')} and ${missing.at(-1)}` : missing[0];
+const summary = [player.position, player.number !== undefined && `number ${player.number}`].filter(Boolean).join(', ');
 ---
-<BaseLayout team={teamId} section="team" title={`${player.name} | ${team.name} | Bridlington Town AFC`} description={`Player profile for ${player.name} of the Bridlington Town AFC ${team.phrase}.`}>
+<BaseLayout team={teamId} section="team" title={`${player.name} | ${team.name} | Bridlington Town AFC`} description={`Player profile for ${player.name}${summary ? ` (${summary})` : ''} of the Bridlington Town AFC ${team.phrase}.`}>
   <section class="profile-hero red-surface">
     <div class="shell profile-grid">
       <PlayerPhoto team={team} player={player} sizes="(max-width: 760px) calc(100vw - 2rem), 440px" eager class="profile-photo" />
@@ -34,11 +41,31 @@ const squadHref = `${sectionHref(teamId, 'team')}#squad`;
         </nav>
         <p class="eyebrow light">{team.name}</p>
         <h1>{player.name}</h1>
-        <p class="profile-pending">Position, squad number, biography and statistics will be added once confirmed by the club.</p>
+        {(player.position || player.number !== undefined || player.captaincy) && (
+          <dl class="profile-facts">
+            {player.number !== undefined && <div><dt>Squad number</dt><dd>{player.number}</dd></div>}
+            {player.position && <div><dt>Position</dt><dd>{player.position}</dd></div>}
+            {player.captaincy && <div><dt>Role</dt><dd>{CAPTAINCY_LABELS[player.captaincy]}</dd></div>}
+          </dl>
+        )}
+        {player.sponsor && (
+          <p class="profile-sponsor">Player sponsor: {player.sponsor.url
+            ? <a href={player.sponsor.url} rel="sponsored noopener">{player.sponsor.name}</a>
+            : <strong>{player.sponsor.name}</strong>}</p>
+        )}
+        <p class="profile-pending">{missingText[0].toUpperCase() + missingText.slice(1)} will be added once confirmed by the club.</p>
         <a class="button light" href={squadHref}><span aria-hidden="true">←</span>&nbsp;Back to the squad</a>
       </div>
     </div>
   </section>
+  {biography && (
+    <section class="section profile-biography" aria-labelledby="biography-title">
+      <div class="shell narrow">
+        <h2 id="biography-title">Biography</h2>
+        <div class="biography" set:html={biography} />
+      </div>
+    </section>
+  )}
   <nav class="section profile-pager" aria-label="More players">
     <div class="shell pager-grid">
       <a href={profileHref(teamId, previous)} rel="prev"><small><span aria-hidden="true">←</span> Previous player</small><strong>{previous.name}</strong></a>
@@ -53,6 +80,13 @@ const squadHref = `${sectionHref(teamId, 'team')}#squad`;
   .profile-intro h1 { margin-bottom: 1.25rem; font-size: clamp(3.4rem, 8vw, 7rem); overflow-wrap: anywhere; }
   .breadcrumbs { margin-bottom: 1.5rem; font-size: .85rem; }
   .breadcrumbs a { text-underline-offset: 3px; }
+  .profile-facts { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.75rem; }
+  .profile-facts dt { color: #f6d9dc; font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .profile-facts dd { margin: 0; font: 800 clamp(1.8rem, 4vw, 2.6rem)/1.1 var(--display); text-transform: uppercase; }
+  .profile-sponsor { margin: -.5rem 0 1.5rem; color: #f6d9dc; }
+  .profile-sponsor a, .profile-sponsor strong { color: #fff; font-weight: 800; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .biography { font-size: 1.1rem; }
+  .biography :global(a) { color: var(--red); font-weight: 700; }
   .profile-pending { max-width: 520px; margin-bottom: 1.75rem; color: #f6d9dc; }
   .profile-pager { padding-block: 2.5rem; }
   .pager-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

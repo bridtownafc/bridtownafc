@@ -30,8 +30,8 @@ export const STATUS_LABELS: Record<Match['status'], string> = {
 
 /** "2-1" from Bridlington Town's side, with penalties if any. */
 export const scoreLine = (m: Match) =>
-  m.score ? `${m.score.for}-${m.score.against}${m.penalties ? ` (${m.penalties.for}-${m.penalties.against} pens)` : ''}` : '';
+  m.score ? `${m.score.for}–${m.score.against}${m.penalties ? ` (${m.penalties.for}–${m.penalties.against} pens)` : ''}` : '';
 
 /** Home side first, as football fixtures are written. */
 export const fixtureTitle = (m: Match) => (m.venueType === 'away' ? `${m.opponent} v Bridlington Town` : `Bridlington Town v ${m.opponent}`);
-export const homeAwayScore = (m: Match) => (m.score ? (m.venueType === 'away' ? `${m.score.against}-${m.score.for}` : `${m.score.for}-${m.score.against}`) : '');
+export const homeAwayScore = (m: Match) => (m.score ? (m.venueType === 'away' ? `${m.score.against}–${m.score.for}` : `${m.score.for}–${m.score.against}`) : '');

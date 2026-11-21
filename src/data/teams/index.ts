@@ -5,6 +5,8 @@ import type { LinkTarget, Player, Section, Story, Team, TeamId } from './types';
 
 export type { LinkTarget, Player, Section, Story, Team, TeamId } from './types';
 
+export const CAPTAINCY_LABELS = { captain: 'Captain', vice_captain: 'Vice-captain' } as const;
+
 export { DEFAULT_TEAM, TEAM_IDS, TEAM_STORAGE_KEY } from './constants';
 
 /** Squad, photos and news come from the CMS snapshot when the site is built from Directus. */
@@ -27,7 +29,7 @@ export const teams: Record<TeamId, Team> = {
       emptyText: 'Player profiles will appear here once confirmed by the club.',
     },
     matches: {
-      introduction: 'Fixtures, results and the Northern Premier League East Division table, with every kick-off in UK time.',
+      introduction: 'Fixtures, results and the Pitching In Northern Premier League, East Division table. Kick-off times are UK time.',
     },
     newsPage: {
       introduction: 'Updates from the team, the boardroom, our commercial partners and the Bridlington community.',
@@ -51,7 +53,7 @@ export const teams: Record<TeamId, Team> = {
       emptyText: "Women's player profiles will appear here once the squad is confirmed by the club and approved photography is supplied.",
     },
     matches: {
-      introduction: "Fixtures, results and league information for the women's first team.",
+      introduction: "Fixtures, results and the East Riding County Women's Football League, Division 2 table.",
     },
     newsPage: {
       introduction: "Updates about Bridlington Town AFC's women's first team.",

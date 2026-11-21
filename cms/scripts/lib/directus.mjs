@@ -33,8 +33,23 @@ export class DirectusError extends Error {
   }
 }
 
-export function client(baseUrl, token) {
-  async function request(method, path, body, { raw = false, headers = {} } = {}) {
+/** Inside `npm run cms:admin`: asks the parent session for a fresh access token (steps can outlast one). */
+function refreshFromParent() {
+  return new Promise((resolve, reject) => {
+    const onMessage = (message) => {
+      if (message?.type !== 'token') return;
+      process.off('message', onMessage);
+      if (message.token) resolve(message.token);
+      else reject(new Error('the admin session could not be refreshed'));
+    };
+    process.on('message', onMessage);
+    process.send({ type: 'refresh' });
+  });
+}
+
+export function client(baseUrl, token, { renew = null } = {}) {
+  async function request(method, path, body, options = {}, retried = false) {
+    const { raw = false, headers = {} } = options;
     const isForm = body instanceof FormData;
     const response = await fetch(baseUrl + path, {
       method,
@@ -45,6 +60,10 @@ export function client(baseUrl, token) {
       },
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
+    if (response.status === 401 && renew && !retried) {
+      token = await renew();
+      return request(method, path, body, options, true);
+    }
     if (raw) return response;
     const text = await response.text();
     const json = text ? JSON.parse(text) : null;
@@ -64,7 +83,9 @@ export function client(baseUrl, token) {
 export async function login(baseUrl, email, password, otp) {
   // Inside `npm run cms:admin`, the Super Admin is already signed in (with one 2FA code) and
   // the session token is passed down, so each step does not need a new code.
-  if (process.env.DIRECTUS_ADMIN_SESSION && email === process.env.ADMIN_EMAIL) return client(baseUrl, process.env.DIRECTUS_ADMIN_SESSION);
+  if (process.env.DIRECTUS_ADMIN_SESSION && email === process.env.ADMIN_EMAIL) {
+    return client(baseUrl, process.env.DIRECTUS_ADMIN_SESSION, { renew: process.send ? refreshFromParent : null });
+  }
   const data = await client(baseUrl).post('/auth/login', { email, password, ...(otp ? { otp } : {}) });
   return client(baseUrl, data.access_token);
 }

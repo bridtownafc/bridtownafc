@@ -106,7 +106,7 @@ const website = { admin: false, roleNames: ['Website'] };
 
 test('Commercial Editors only read commercial enquiries, combined with their own filter', () => {
   const q = scopeQuery({ collection: 'enquiries', query: { filter: { handling: { _eq: 'new' } }, limit: 10 }, user: commercial });
-  assert.deepEqual(q, { filter: { _and: [{ handling: { _eq: 'new' } }, { topic: { _eq: 'commercial' } }] }, limit: 10 });
+  assert.deepEqual(q, { filter: { _and: [{ handling: { _eq: 'new' } }, { topic: { _in: ['commercial'] } }] }, limit: 10 });
 });
 
 test('the website token reads published items only, and articles only once due', () => {
@@ -121,4 +121,76 @@ test('Club Admins and administrators are not limited; other collections are unch
   assert.equal(scopeQuery({ collection: 'enquiries', query, user: { admin: false, roleNames: ['Club Admin'] } }), query);
   assert.equal(scopeQuery({ collection: 'enquiries', query, user: { admin: true, roleNames: [] } }), query);
   assert.equal(scopeQuery({ collection: 'articles', query, user: commercial }), query);
+});
+
+// --- Website enquiries by role and team allocations ---------------------------------------------
+import { ENQUIRY_TOPICS, PROPOSED_ENQUIRY_TOPICS, canHandleEnquiry, checkAllocation } from '../extensions/brid-publishing/rules.js';
+
+test('only authorised roles handle enquiries: Commercial Editors commercial, Club Admins all', () => {
+  const as = (...roleNames) => ({ admin: false, roleNames });
+  assert.equal(canHandleEnquiry({ topic: 'commercial', user: as('Commercial Editor') }), true);
+  assert.equal(canHandleEnquiry({ topic: 'general', user: as('Commercial Editor') }), false);
+  assert.equal(canHandleEnquiry({ topic: 'general', user: as('Club Admin') }), true);
+  // The proposed football/matchday and community routing is not granted until the club confirms it.
+  for (const [role, topics] of Object.entries(PROPOSED_ENQUIRY_TOPICS)) {
+    assert.equal(ENQUIRY_TOPICS[role], undefined, `${role} enquiry access is pending confirmation`);
+    for (const topic of topics) assert.equal(canHandleEnquiry({ topic, user: as(role) }), false);
+  }
+  const q = scopeQuery({ collection: 'enquiries', query: {}, user: as('Commercial Editor') });
+  assert.deepEqual(q.filter, { _and: [{ topic: { _in: ['commercial'] } }] });
+  assert.deepEqual(scopeQuery({ collection: 'enquiries', query: {}, user: as('Club Admin') }), {});
+});
+
+test('a team allocation must name its team', () => {
+  assert.match(checkAllocation({ action: 'create', before: null, after: { person: 4 } }), /Choose the team/);
+  assert.equal(checkAllocation({ action: 'create', before: null, after: { person: 4, team: 1 } }), null);
+  assert.equal(checkAllocation({ action: 'update', before: { team: 1 }, after: { team: 1, position: 'Defender' } }), null);
+  assert.match(checkAllocation({ action: 'update', before: { team: 1 }, after: { team: null } }), /Choose the team/);
+  assert.equal(checkAllocation({ action: 'delete', before: { team: 1 }, after: null }), null);
+});
+
+// --- Protected settings and duplicates -------------------------------------------------------
+import { checkDuplicateAllocation, checkDuplicatePerson, checkProtectedFields } from '../extensions/brid-publishing/rules.js';
+
+test('editors manage a squad but not team settings or Match Centre references', () => {
+  const editor = { admin: false, roleNames: ['Football Editor'] };
+  const clubAdmin = { admin: false, roleNames: ['Club Admin'] };
+  const team = (payload, user = editor) => checkProtectedFields({ action: 'update', collection: 'teams', before: null, payload, user });
+  assert.equal(team({ squad: { create: [{ person: 1 }], update: [], delete: [] } }), null);
+  assert.equal(team({ placeholder_cards: 2 }), null);
+  assert.match(team({ name: 'Renamed' }), /Only a Club Admin/);
+  assert.match(team({ fulltime_table_code: '123' }), /Only a Club Admin/);
+  assert.equal(team({ fulltime_table_code: '123' }, clubAdmin), null);
+  const fixture = (before, payload) => checkProtectedFields({ action: 'update', collection: 'fixtures', before, payload, user: editor });
+  assert.equal(fixture({ source_match_id: null }, { source_match_id: 'football-web-pages:1' }), null, 'a reference can be added');
+  assert.equal(fixture({ source_match_id: 'football-web-pages:1' }, { score_for: 2 }), null);
+  assert.equal(fixture({ source_match_id: 'football-web-pages:1' }, { source_match_id: 'football-web-pages:1' }), null);
+  assert.match(fixture({ source_match_id: 'football-web-pages:1' }, { source_match_id: 'football-web-pages:2' }), /cannot be changed/);
+  assert.match(fixture({ source_match_id: 'football-web-pages:1' }, { source_match_id: null }), /cannot be changed/);
+});
+
+test('duplicate profiles and allocations are refused', () => {
+  assert.match(checkDuplicatePerson({ name: '  josé  SMITH ', existing: ['Jose Smith', 'Ann Lee'] }), /already exists/);
+  assert.equal(checkDuplicatePerson({ name: 'Jo Smith', existing: ['Jose Smith'] }), null);
+  assert.match(checkDuplicateAllocation({ duplicates: 1, personName: 'Ann Lee', teamName: "Women's First Team" }), /Ann Lee is already in Women's First Team/);
+  assert.equal(checkDuplicateAllocation({ duplicates: 0 }), null);
+});
+
+// --- Web addresses and photo formats ---------------------------------------------------------
+import { checkPhotoFile, slugify, uniqueSlug } from '../extensions/brid-publishing/rules.js';
+
+test('web addresses are made from names and kept unique', () => {
+  assert.equal(slugify("Jess O'Corner"), 'jess-ocorner');
+  assert.equal(slugify('  Zoë   Smith-Jones! '), 'zoe-smith-jones');
+  assert.equal(slugify('FA Trophy - Brid Town Face South Shields'), 'fa-trophy-brid-town-face-south-shields');
+  assert.equal(slugify('!!!'), '');
+  assert.equal(uniqueSlug('jess-corner', []), 'jess-corner');
+  assert.equal(uniqueSlug('jess-corner', ['jess-corner', 'jess-corner-2']), 'jess-corner-3');
+});
+
+test('only photos the website can show are accepted', () => {
+  for (const type of ['image/jpeg', 'image/png', 'image/webp']) assert.equal(checkPhotoFile({ type, filename_download: 'a' }), null);
+  assert.match(checkPhotoFile({ type: 'image/svg+xml', filename_download: 'logo.svg' }), /"logo.svg" is a SVG\+XML file.*JPEG, PNG or WebP/);
+  assert.match(checkPhotoFile({ type: 'application/pdf', filename_download: 'team.pdf' }), /cannot show/);
+  assert.equal(checkPhotoFile(null), null);
 });

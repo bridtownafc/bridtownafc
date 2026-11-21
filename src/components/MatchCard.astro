@@ -17,9 +17,14 @@ const sides = match ? (home ? ['Bridlington Town', match.opponent] : [match.oppo
 const goals = match?.score ? (home ? [match.score.for, match.score.against] : [match.score.against, match.score.for]) : null;
 const tickets = isNext && match && match.venueType === 'home' && match.status === 'scheduled' && TICKETED_TEAMS.includes(team);
 const matchesHref = sectionHref(team, 'matches');
+// Embedded FA Full-Time data stays inside its widget, so it cannot fill these cards.
+const synced = Boolean(data.snapshot.sync.lastSuccessAt);
 const emptyText = data.embedCodes
-  ? `See the Match Centre for ${isNext ? 'fixtures' : 'results'} from ${data.source.name}.`
-  : isNext ? 'The next fixture will appear here once it is published by the competition.' : 'The latest result will appear here once it is confirmed by the competition.';
+  ? `${isNext ? 'Fixtures' : 'Results'} from FA Full-Time are in the Match Centre.`
+  : synced
+    ? (isNext ? 'No upcoming fixture has been published.' : 'No result has been confirmed yet this season.')
+    : `The ${isNext ? 'next fixture' : 'latest result'} is not available here yet.`;
+const emptyLink = data.embedCodes ? { href: matchesHref, label: 'Match Centre' } : { href: data.source.officialFixturesUrl, label: 'Official fixtures and results' };
 ---
 <article class:list={['fixture-card', !isNext && 'result-card']}>
   <header><span>{isNext ? 'Next match' : 'Latest result'}</span>{match && <small>{match.competition.name}</small>}</header>
@@ -30,7 +35,7 @@ const emptyText = data.embedCodes
         <div class="team">{home ? <Logo tone="dark" alt="" sizes="68px" /> : <span class="opponent-badge" aria-hidden="true">{sides[0].slice(0, 1)}</span>}<strong>{sides[0]}</strong></div>
         <div class="score">
           {goals
-            ? <span aria-label={`${sides[0]} ${goals[0]}, ${sides[1]} ${goals[1]}`}>{goals[0]}-{goals[1]}</span>
+            ? <span aria-label={`${sides[0]} ${goals[0]}, ${sides[1]} ${goals[1]}`}>{goals[0]}–{goals[1]}</span>
             : <span aria-label={`Kick-off ${kickOff(match)}`}>{kickOff(match)}</span>}
         </div>
         <div class="team">{home ? <span class="opponent-badge" aria-hidden="true">{sides[1].slice(0, 1)}</span> : <Logo tone="dark" alt="" sizes="68px" />}<strong>{sides[1]}</strong></div>
@@ -44,7 +49,7 @@ const emptyText = data.embedCodes
   ) : (
     <div class="fixture-empty">
       <p>{emptyText}</p>
-      <a class="fixture-action" href={matchesHref}>Match Centre <span aria-hidden="true">→</span></a>
+      <a class="fixture-action" href={emptyLink.href} rel={data.embedCodes ? undefined : 'noopener'}>{emptyLink.label} <span aria-hidden="true">→</span></a>
     </div>
   )}
 </article>

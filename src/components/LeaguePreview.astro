@@ -18,12 +18,14 @@ const href = `${sectionHref(team, 'matches')}#table`;
   </div>
   {table
     ? <div class="league-body"><p class="competition">{table.competition}</p><LeagueTable table={table} around={2} tone="dark" caption={false} /></div>
-    : <p class="league-empty">{data.embedCodes ? `The ${data.source.name} table is shown in the Match Centre.` : 'The league table will appear here once it is published by the competition.'}</p>}
-  <a class="table-link" href={href}>{table ? 'View full table' : 'Match Centre'} <span aria-hidden="true">→</span></a>
+    : <p class="league-empty">{data.source.league}. {data.embedCodes?.table ? 'The FA Full-Time table is in the Match Centre.' : 'The table is not available here yet.'}</p>}
+  {table || data.embedCodes?.table
+    ? <a class="table-link" href={href}>View full table <span aria-hidden="true">→</span></a>
+    : <a class="table-link" href={data.source.officialTableUrl} rel="noopener">Official league table <span aria-hidden="true">→</span></a>}
 </section>
 <style>
-  .league-card { display: flex; flex-direction: column; color: #fff; background: var(--ink); }
-  .league-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding: 1.5rem; }
+  .league-card { display: flex; min-width: 0; flex-direction: column; color: #fff; background: var(--ink); }
+  .league-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .5rem 1rem; padding: 1.5rem; }
   .league-head h2 { margin: 0; font-size: 3rem; }
   .league-head span { color: #b5b5b5; font-size: .72rem; text-align: right; text-transform: uppercase; }
   .league-body { padding: 0 1.5rem; }
@@ -31,4 +33,9 @@ const href = `${sectionHref(team, 'matches')}#table`;
   .league-empty { margin: 0; padding: 0 1.5rem 1.5rem; color: #d7d7d7; }
   .table-link { display: flex; justify-content: space-between; margin-top: auto; padding: 1rem 1.5rem; color: #fff; font-family: var(--display); font-weight: 800; text-decoration: none; text-transform: uppercase; }
   .table-link:hover { background: #1f1f1f; }
+  @media (max-width: 480px) {
+    .league-head, .table-link { padding-inline: 1rem; }
+    .league-body { padding: 0 .75rem; }
+    .league-head h2 { font-size: 2.4rem; }
+  }
 </style>

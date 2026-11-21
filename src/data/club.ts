@@ -1,5 +1,5 @@
-// Verified club details used across the site. Only facts confirmed from an official
-// source are recorded here; anything else stays out until the club supplies it.
+// Verified club details used across the site. Only facts confirmed by the club or an
+// official source are recorded here; anything else stays out until the club supplies it.
 // When the site is built from Directus, Site settings in the CMS take precedence.
 import { cmsContent } from '@/lib/cms';
 import type { TeamId } from './teams/types';
@@ -16,28 +16,60 @@ export const TICKETS_URL = 'https://bridtownafc.ktckts.com/';
 export const TICKETED_TEAMS: TeamId[] = ['mens'];
 
 /**
- * From the ticket portal's published organisation details (schema.org data on
- * bridtownafc.ktckts.com, read 27 Oct 2026).
+ * Ground name and address confirmed by the club on 27 Oct 2026. (The ticket portal's own
+ * organisation details still name the ground's former sponsor; that is for the club to update.)
+ * Telephone from the ticket portal's published organisation details.
  */
-const verified = {
-  groundName: 'Mounting Systems Stadium',
-  address: 'Mounting Systems Stadium, Bridlington, East Yorkshire, YO16 7LN',
+export const VERIFIED_GROUND = {
+  name: 'HDM Energies Stadium',
+  street: 'Queensgate',
+  town: 'Bridlington',
   postcode: 'YO16 7LN',
+};
+const verified = {
+  groundName: VERIFIED_GROUND.name,
+  addressLines: [VERIFIED_GROUND.name, VERIFIED_GROUND.street, VERIFIED_GROUND.town, VERIFIED_GROUND.postcode],
   contactPhone: '01262 606879',
   contactEmail: null as string | null,
 };
 
 const settings = cmsContent?.siteSettings;
+/** CMS address: one line per row (or comma separated). */
+const cmsLines = settings?.address?.split(/\r?\n|,\s*/).map((l) => l.trim()).filter(Boolean);
 
 export const club = {
   name: 'Bridlington Town AFC',
   groundName: settings?.groundName ?? verified.groundName,
-  address: settings?.address ?? verified.address,
-  postcode: verified.postcode,
+  addressLines: cmsLines?.length ? cmsLines : verified.addressLines,
+  get address() { return this.addressLines.join(', '); },
   contactPhone: settings?.contactPhone ?? verified.contactPhone,
   contactEmail: settings?.contactEmail ?? verified.contactEmail,
   social: settings?.social ?? { facebook: null, instagram: null, x: null, youtube: null },
 };
 
 export const telHref = (phone: string) => `tel:${phone.replace(/[^0-9+]/g, '').replace(/^0/, '+44')}`;
+/** Searches for the ground by name and full address, so the pin matches the directions given. */
 export const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(club.address)}`;
+
+/** schema.org data for the club and its ground, used on the Club and Contact pages. */
+export const clubStructuredData = (site: URL) => ({
+  '@context': 'https://schema.org',
+  '@type': 'SportsTeam',
+  name: club.name,
+  sport: 'Football',
+  url: new URL('/', site).toString(),
+  logo: new URL('/assets/brand/brid-town-badge-black.png', site).toString(),
+  telephone: club.contactPhone,
+  ...(club.contactEmail ? { email: club.contactEmail } : {}),
+  location: {
+    '@type': 'StadiumOrArena',
+    name: club.groundName,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: club.addressLines.slice(1, -2).join(', ') || VERIFIED_GROUND.street,
+      addressLocality: VERIFIED_GROUND.town,
+      postalCode: VERIFIED_GROUND.postcode,
+      addressCountry: 'GB',
+    },
+  },
+});
