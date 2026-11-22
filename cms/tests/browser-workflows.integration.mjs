@@ -38,7 +38,10 @@ const pass = (text) => { checks += 1; console.log(`  PASS ${text}`); };
 const step = (text) => console.log(`\n- ${text}`);
 
 // ---- website checks ------------------------------------------------------------------------------
-const page = async (route) => { const r = await fetch(SITE + route, { cache: 'no-store' }); return r.ok ? r.text() : null; };
+/** A page of the preview website as text, with HTML entities decoded (the site writes ' as &#39;). */
+const decode = (html) => html.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+  .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const page = async (route) => { const r = await fetch(SITE + route, { cache: 'no-store' }); return r.ok ? decode(await r.text()) : null; };
 async function lastBuild() { return (await (await fetch(`${LISTENER}/status`)).json()).lastBuild; }
 /** Waits for a website build that started after `since` to finish. Returns it. */
 async function buildAfter(since, timeoutMs = 8 * 60_000) {

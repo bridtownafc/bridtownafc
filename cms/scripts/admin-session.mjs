@@ -22,6 +22,7 @@ const STEPS = {
   photos: 'cms/scripts/import-squad-photos.mjs',
   browser: 'cms/tests/browser-workflows.integration.mjs',
   'rebuild-check': 'cms/tests/rebuild-trigger.integration.mjs',
+  cleanup: 'cms/scripts/remove-test-content.mjs',
 };
 const otp = process.argv.find((a) => a.startsWith('--otp='))?.slice(6);
 const steps = process.argv.slice(2).filter((a) => !a.startsWith('--'));
