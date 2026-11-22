@@ -108,6 +108,10 @@ const HELPERS = `
   window.__field = (label) => [...__scope().querySelectorAll('.field')].find((f) => { const l = f.querySelector('.field-label, .field-name, .label'); return l && l.textContent.replace(/[*\\s]+$/,'').trim() === label; });
   window.__setText = (label, value) => {
     const f = __field(label); if (!f) return 'no field ' + label;
+    // Markdown fields are CodeMirror editors: edit through CodeMirror itself, as typing does
+    // (its "setValue" origin is ignored by Directus, so replace the whole range instead).
+    const cmHost = f.querySelector('.CodeMirror');
+    if (cmHost && cmHost.CodeMirror) { const cm = cmHost.CodeMirror; cm.replaceRange(value, cm.posFromIndex(0), cm.posFromIndex(cm.getValue().length)); return 'ok'; }
     const el = f.querySelector('textarea, input:not([type=checkbox]):not([type=file]), [contenteditable=true]'); if (!el) return 'no input in ' + label;
     el.focus();
     if (el.isContentEditable) { el.textContent = value; el.dispatchEvent(new InputEvent('input', { bubbles: true })); }
@@ -196,9 +200,10 @@ try {
     await choose('Website status', 'Published');
     await shot(`news-form-${team}`);
     await saveForm();
-    const [article] = await admin.get('/items/articles' + q({ filter: { title: { _eq: headline } }, fields: 'id,slug,status,team' }));
+    const [article] = await admin.get('/items/articles' + q({ filter: { title: { _eq: headline } }, fields: 'id,slug,status,team,body' }));
     assert.ok(article, `the ${team} article was not saved: ${await errorText()}`);
     created.articles.push(article.id);
+    assert.match(article.body ?? '', new RegExp(`Temporary test article ${tag}`), `the ${team} article body (Full article) was not saved`);
     assert.equal(article.team, teams[team].id, `the ${team} article was not assigned to ${teams[team].name}`);
     const build = await buildAfter(since);
     assert.equal(build.ok, true, `website build failed: ${build.reason}`);
