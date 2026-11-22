@@ -106,14 +106,20 @@ export default ({ filter, action, schedule }, { env, logger, database }) => {
       const others = rows.filter((row) => String(row.id) !== String(ownId)).map((row) => row.display_name);
       return checkDuplicatePerson({ name: item.display_name, existing: others });
     }
-    if (collection === 'squad_memberships' && item.person && item.team && item.status !== 'archived') {
-      const query = database('squad_memberships').where({ person: item.person, team: item.team }).whereNot('status', 'archived');
+    // Only existing records can be duplicates: a profile created in the same save arrives as an
+    // object (not yet an id), and a related record may arrive as { id }.
+    const idOf = (value) => (value !== null && typeof value === 'object' ? value.id ?? null : value);
+    const person = idOf(item.person);
+    const team = idOf(item.team);
+    const isId = (value) => typeof value === 'number' || (typeof value === 'string' && /^d+$/.test(value));
+    if (collection === 'squad_memberships' && isId(person) && isId(team) && item.status !== 'archived') {
+      const query = database('squad_memberships').where({ person, team }).whereNot('status', 'archived');
       if (ownId !== null) query.whereNot('id', ownId);
       const [{ count }] = await query.count({ count: '*' });
       if (Number(count) === 0) return null;
-      const [person] = await database('people').where({ id: item.person }).select('display_name');
-      const [team] = await database('teams').where({ id: item.team }).select('name');
-      return checkDuplicateAllocation({ duplicates: Number(count), personName: person?.display_name, teamName: team?.name });
+      const [personRow] = await database('people').where({ id: person }).select('display_name');
+      const [teamRow] = await database('teams').where({ id: team }).select('name');
+      return checkDuplicateAllocation({ duplicates: Number(count), personName: personRow?.display_name, teamName: teamRow?.name });
     }
     return null;
   }
