@@ -111,17 +111,25 @@ const HELPERS = `
     else { const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
     el.blur(); return 'ok';
   };
-  window.__clickIn = (label, selector) => { const f = __field(label); const el = f && f.querySelector(selector); if (!el) return false; el.click(); return true; };
+  // Clicks inside the field's input area (never its label menu), trying each selector in turn.
+  window.__clickIn = (label, selector) => { const f = __field(label); if (!f) return false; const root = f.querySelector('.interface') || f; for (const sel of selector.split(/,\s*/)) { const el = [...root.querySelectorAll(sel)].find((e) => e.offsetParent || e.getClientRects().length); if (el) { el.scrollIntoView({ block: 'center' }); el.click(); return true; } } return false; };
   window.__menuPick = (text) => { const item = [...document.querySelectorAll('.v-menu-content .v-list-item, .v-list-item')].filter((e) => e.offsetParent).find((e) => e.textContent.trim().startsWith(text)); if (!item) return false; item.click(); return true; };
   window.__headerSave = () => { const s = __scope(); const root = s === document ? document.querySelector('header, .header-bar') : s; const b = [...root.querySelectorAll('button')].filter((e) => e.offsetParent && !e.disabled).find((e) => /^(save|publish)$/i.test(e.textContent.trim()) || e.querySelector('[data-icon="check"]')); if (!b) return false; b.click(); return true; };
 `;
 async function helpers() { await evaluate(`(() => { ${HELPERS}; return true; })()`); }
+/** On failure: saves the field's HTML and any open drawer's, for diagnosis. */
+async function dumpField(label) {
+  await helpers();
+  const html = await evaluate(`(() => { const f = __field(${JSON.stringify(label)}); const d = [...document.querySelectorAll('.v-drawer, .v-menu-content, [role=dialog]')].filter((e) => e.offsetParent).map((e) => e.outerHTML.slice(0, 20000)); return (f ? f.outerHTML : 'NO FIELD') + ' === open drawers/menus === ' + d.join(' --- '); })()`);
+  writeFileSync(path.join(OUT, `dump-${label.replace(/[^A-Za-z]+/g, '-')}.html`), html ?? '');
+  await shot(`dump-${label.replace(/[^A-Za-z]+/g, '-')}`);
+}
 async function setText(label, value) { await helpers(); const r = await evaluate(`__setText(${JSON.stringify(label)}, ${JSON.stringify(value)})`); assert.equal(r, 'ok', r); await sleep(300); }
 async function choose(label, option) {
   await helpers();
-  assert.ok(await evaluate(`__clickIn(${JSON.stringify(label)}, '.v-select, .v-input, input, button')`), `no dropdown ${label}`);
+  if (!(await evaluate(`__clickIn(${JSON.stringify(label)}, '.v-input, input, .v-select, button')`))) { await dumpField(label); assert.fail(`no dropdown ${label}`); }
   await sleep(700);
-  assert.ok(await evaluate(`__menuPick(${JSON.stringify(option)})`), `no option "${option}" in ${label}`);
+  if (!(await evaluate(`__menuPick(${JSON.stringify(option)})`))) { await dumpField(label); assert.fail(`no option "${option}" in ${label}`); }
   await sleep(500);
 }
 /** A many-to-one field (e.g. Team): opens its picker and chooses the row containing `text`. */
@@ -130,7 +138,7 @@ async function chooseRelated(label, text) {
   assert.ok(await evaluate(`__clickIn(${JSON.stringify(label)}, '.v-input, input, .preview, button')`), `no picker for ${label}`);
   await sleep(2000);
   const picked = await evaluate(`(() => { const s = __scope(); const row = [...s.querySelectorAll('tr, .table-row, .v-list-item, .row')].filter((e) => e.offsetParent).find((e) => e.textContent.includes(${JSON.stringify(text)})); if (!row) return false; row.click(); return true; })()`);
-  assert.ok(picked, `no "${text}" to choose for ${label}`);
+  if (!picked) { await dumpField(label); assert.fail(`no "${text}" to choose for ${label}`); }
   await sleep(1200);
   await helpers();
   // Some pickers close on selection; others need confirming with the drawer's tick.
