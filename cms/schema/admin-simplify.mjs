@@ -251,6 +251,10 @@ const INBOX = tabular(['handling', 'date_created', 'topic', 'name', 'organisatio
 
 /** Shared list views (bookmark null = everyone's default) for the sections above. */
 export const PRESETS = [
+  // Lists and "Select item" pickers show names first (without these, Directus shows arbitrary columns).
+  { collection: 'teams', bookmark: null, ...tabular(['name', 'placeholder_cards'], ['sort'], { name: 320 }), filter: null },
+  { collection: 'competitions', bookmark: null, ...tabular(['name', 'short_name', 'status'], ['name'], { name: 320 }), filter: null },
+  { collection: 'seasons', bookmark: null, ...tabular(['name', 'is_current', 'starts_on', 'ends_on'], ['-starts_on'], { name: 200 }), filter: null },
   { collection: 'enquiries', bookmark: null, ...INBOX, filter: null },
   { collection: 'enquiries', bookmark: 'New enquiries', icon: 'mark_email_unread', ...INBOX, filter: { handling: { _eq: 'new' } } },
   { collection: 'enquiries', bookmark: 'In progress', icon: 'pending', ...INBOX, filter: { handling: { _eq: 'in_progress' } } },
