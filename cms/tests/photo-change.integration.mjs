@@ -13,13 +13,20 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { cropFor, writeVariants } from '../../scripts/lib/squad-photos.mjs';
 import { DirectusError, client, loadEnv, login, q } from '../scripts/lib/directus.mjs';
 
 const SLUG = 'brooke-stephenson';
 const ALTERNATIVE = '.cache/drive/originals/brooke__EC__6486.jpg'; // Brooke's away-shirt photo
-const BUILT_PHOTO = `dist/media/cms/squad/womens/web/${SLUG}-800.jpg`;
+// Generated photo names carry a version (they change when the photo does), so find the current one.
+const BUILT_DIR = 'dist/media/cms/squad/womens/web';
+const builtPhoto = () => {
+  const name = readdirSync(BUILT_DIR).find((f) => f.startsWith(`${SLUG}-`) && f.endsWith('-800.jpg'));
+  if (!name) throw new Error(`no built 800px photo for ${SLUG}`);
+  return path.join(BUILT_DIR, name);
+};
 const BUILT_PAGE = `dist/womens/team/${SLUG}/index.html`;
 const LISTENER = 'http://127.0.0.1:4400';
 
@@ -75,7 +82,7 @@ try {
   let since = new Date();
   await editor.patch(`/items/people/${person.id}`, { photo_description: person.photo_description }); // no-op edit: publishes current state
   await waitForBuild(since);
-  const before = await sha(BUILT_PHOTO);
+  const before = await sha(builtPhoto());
   pass(`build from Directus shows the current photo (${before.slice(0, 12)}…)`);
 
   step('Football Editor uploads a new photo and assigns it');
@@ -89,7 +96,7 @@ try {
 
   const expectedDir = await mkdtemp(path.join(tmpdir(), 'bt-photo-'));
   await writeVariants(ALTERNATIVE, await cropFor(ALTERNATIVE), expectedDir, SLUG);
-  const after = await sha(BUILT_PHOTO);
+  const after = await sha(builtPhoto());
   assert.notEqual(after, before, 'photo on the website did not change');
   assert.equal(after, await sha(path.join(expectedDir, `${SLUG}-800.jpg`)), 'website photo is not the new upload');
   assert.match(await readFile(BUILT_PAGE, 'utf8'), /navy away shirt/);
@@ -110,7 +117,7 @@ try {
   await editor.patch(`/items/people/${person.id}`, restore);
   restore = null;
   await waitForBuild(since);
-  assert.equal(await sha(BUILT_PHOTO), before, 'original photo not restored on the website');
+  assert.equal(await sha(builtPhoto()), before, 'original photo not restored on the website');
   pass('next build shows the original photo again');
 } finally {
   if (restore && person) await admin.patch(`/items/people/${person.id}`, restore).catch((e) => console.error('  could not restore photo:', e.message));

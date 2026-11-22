@@ -16,7 +16,7 @@ const player = z
   .object({
     slug,
     name: z.string().trim().min(1),
-    photo: z.object({ original: z.string().min(1), description: z.string().trim().min(1) }).strict().optional(),
+    photo: z.object({ original: z.string().min(1), description: z.string().trim().min(1), version: z.string().regex(/^[a-f0-9]{8,16}$/).optional() }).strict().optional(),
     number: z.number().int().min(1).max(99).optional(),
     position: z.enum(['Goalkeeper', 'Defender', 'Midfielder', 'Forward']).optional(),
     /** Markdown. */

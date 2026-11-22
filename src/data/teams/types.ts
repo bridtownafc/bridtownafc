@@ -11,6 +11,8 @@ export interface SquadPhoto {
   original: string;
   /** Description of the image for alt text. */
   description: string;
+  /** CMS photos: changes when the photo or its crop does, and is part of the generated file names. */
+  version?: string;
 }
 
 export const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'] as const;

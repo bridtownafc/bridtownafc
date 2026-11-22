@@ -119,7 +119,15 @@ const staging = '.cache/cms-media-staging';
 await rm(staging, { recursive: true, force: true });
 
 /** Resized copies of a CMS image in staging; returns the website path of the JPEG/PNG (a WebP sits beside it). */
-async function webImage(file, dir, name, { width, keepAlpha = false }) {
+/**
+ * A short tag that changes whenever the image would: a new or replaced file, an edited file, or
+ * a new crop. It goes into generated file names so a replaced photo gets a new URL and no
+ * browser, host or CDN cache can keep showing the old one.
+ */
+const imageVersion = (file, ...extra) => createHash('sha256').update([file.id, file.modified_on, ...extra.map((x) => JSON.stringify(x ?? null))].join(':')).digest('hex').slice(0, 10);
+
+async function webImage(file, dir, slug, { width, keepAlpha = false }) {
+  const name = `${slug}-${imageVersion(file, width)}`;
   const source = await original(file);
   const outDir = path.join(staging, dir);
   await mkdir(outDir, { recursive: true });
@@ -158,8 +166,9 @@ for (const team of teams) {
     }
     if (person.photo) {
       const source = await original(person.photo);
-      await writeVariants(source, await regionFor(source, person.photo, person.photo_crop), webDir, person.slug);
-      player.photo = { original: person.photo.filename_download, description: person.photo_description?.trim() || 'squad portrait' };
+      const version = imageVersion(person.photo, person.photo_crop);
+      await writeVariants(source, await regionFor(source, person.photo, person.photo_crop), webDir, `${person.slug}-${version}`);
+      player.photo = { original: person.photo.filename_download, description: person.photo_description?.trim() || 'squad portrait', version };
     }
     players.push(player);
   }

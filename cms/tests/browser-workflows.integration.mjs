@@ -124,6 +124,18 @@ async function choose(label, option) {
   assert.ok(await evaluate(`__menuPick(${JSON.stringify(option)})`), `no option "${option}" in ${label}`);
   await sleep(500);
 }
+/** A many-to-one field (e.g. Team): opens its picker and chooses the row containing `text`. */
+async function chooseRelated(label, text) {
+  await helpers();
+  assert.ok(await evaluate(`__clickIn(${JSON.stringify(label)}, '.v-input, input, .preview, button')`), `no picker for ${label}`);
+  await sleep(2000);
+  const picked = await evaluate(`(() => { const s = __scope(); const row = [...s.querySelectorAll('tr, .table-row, .v-list-item, .row')].filter((e) => e.offsetParent).find((e) => e.textContent.includes(${JSON.stringify(text)})); if (!row) return false; row.click(); return true; })()`);
+  assert.ok(picked, `no "${text}" to choose for ${label}`);
+  await sleep(1200);
+  await helpers();
+  // Some pickers close on selection; others need confirming with the drawer's tick.
+  if (await evaluate(`__scope() !== document && [...__scope().querySelectorAll('tr, .table-row')].some((e) => e.textContent.includes(${JSON.stringify(text)}))`)) await saveForm();
+}
 async function saveForm() { await helpers(); assert.ok(await evaluate('__headerSave()'), 'no Save button'); await sleep(3500); }
 async function errorText() { return evaluate(`(() => [...document.querySelectorAll('.v-notice.danger, .validation-errors, .notification.error, .v-notification.error, .notification-item.danger, .validation-error')].map((e) => e.textContent.trim()).join(' | '))()`); }
 async function upload(label, file) {
@@ -158,54 +170,59 @@ try {
   assert.ok(await page('/'), `the preview website is not running at ${SITE} (npm run preview)`);
   const teams = Object.fromEntries((await admin.get('/items/teams?fields=id,key,name')).map((t) => [t.key, t]));
 
-  // ---- 1. News ----------------------------------------------------------------------------------
-  step('News, as a Media Editor, through the article form');
+  // ---- 1. News: one men's and one women's article ------------------------------------------------
+  step("News, as a Media Editor, through the article form: a men's and a women's article");
   const media = await staff('Media Editor');
-  const headline = `Test article ${tag}`;
-  let since = Date.now();
-  await go('/admin/content/articles/+');
-  await setText('Headline', headline);
-  await setText('Summary', `Temporary test summary ${tag}.`);
-  await setText('Full article', `Temporary test article ${tag}. It is removed automatically.`);
-  await choose('Website status', 'Published');
-  await shot('news-form');
-  await saveForm();
-  const [article] = await admin.get('/items/articles' + q({ filter: { title: { _eq: headline } }, fields: 'id,slug,status' }));
-  assert.ok(article, `the article was not saved: ${await errorText()}`);
-  created.articles.push(article.id);
-  assert.equal(article.slug, `test-article-${tag.toLowerCase()}`, 'web address not filled in automatically');
-  pass(`saved through the form as Published; web address filled in automatically (${article.slug})`);
-  let build = await buildAfter(since);
-  assert.equal(build.ok, true, `website build failed: ${build.reason}`);
-  assert.ok(await notified(media, 'Website updated', since), 'no "Website updated" notification');
-  for (const team of ['mens', 'womens']) {
+  const articles = {};
+  for (const [team, other] of [['mens', 'womens'], ['womens', 'mens']]) {
+    const headline = `Test ${team === 'mens' ? "men's" : "women's"} article ${tag}`;
+    const since = Date.now();
+    await go('/admin/content/articles/+');
+    await setText('Headline', headline);
+    await setText('Summary', `Temporary test summary ${tag}.`);
+    await setText('Full article', `Temporary test article ${tag} for the ${teams[team].name}. It is removed automatically.`);
+    await chooseRelated('Team', teams[team].name);
+    await choose('Website status', 'Published');
+    await shot(`news-form-${team}`);
+    await saveForm();
+    const [article] = await admin.get('/items/articles' + q({ filter: { title: { _eq: headline } }, fields: 'id,slug,status,team' }));
+    assert.ok(article, `the ${team} article was not saved: ${await errorText()}`);
+    created.articles.push(article.id);
+    assert.equal(article.team, teams[team].id, `the ${team} article was not assigned to ${teams[team].name}`);
+    const build = await buildAfter(since);
+    assert.equal(build.ok, true, `website build failed: ${build.reason}`);
+    assert.ok(await notified(media, 'Website updated', since), 'no "Website updated" notification');
     assert.ok((await page(`/${team}/news/`))?.includes(headline), `not in the ${team} news listing`);
     assert.ok((await page(`/${team}/news/${article.slug}/`))?.includes(`Temporary test article ${tag}`), `${team} article page missing`);
+    assert.ok((await page(`/${team}/`))?.includes(headline), `not in the ${team} homepage news section`);
+    assert.ok(!(await page(`/${other}/news/`))?.includes(headline), `also listed for ${other}`);
+    assert.equal(await page(`/${other}/news/${article.slug}/`), null, `article page also built for ${other}`);
+    articles[team] = { ...article, headline };
+    pass(`${teams[team].name} article (${article.slug}): published through the form, then automatically in the ${team} news listing, homepage news section and article page only; "Website updated" sent`);
   }
-  assert.ok((await page('/mens/'))?.includes(headline), 'not in the homepage news section');
-  pass('after the automatic rebuild: in both news listings, the homepage news section and its article page; "Website updated" sent');
 
-  since = Date.now();
-  await go(`/admin/content/articles/${article.id}`);
-  await setText('Headline', `${headline} (edited)`);
+  let since = Date.now();
+  await go(`/admin/content/articles/${articles.mens.id}`);
+  await setText('Headline', `${articles.mens.headline} (edited)`);
   await saveForm();
-  build = await buildAfter(since);
+  let build = await buildAfter(since);
   assert.equal(build.ok, true, `website build failed: ${build.reason}`);
-  assert.ok((await page(`/mens/news/${article.slug}/`))?.includes(`${headline} (edited)`), 'edit did not reach the article page');
-  pass('edited headline reached the article page');
+  assert.ok((await page(`/mens/news/${articles.mens.slug}/`))?.includes(`${articles.mens.headline} (edited)`), 'edit did not reach the article page');
+  pass("edited headline reached the men's article page");
 
-  since = Date.now();
-  await go(`/admin/content/articles/${article.id}`);
-  await choose('Website status', 'Draft');
-  await shot('news-unpublish');
-  await saveForm();
-  build = await buildAfter(since);
-  assert.equal(build.ok, true, `website build failed: ${build.reason}`);
-  assert.equal(await page(`/mens/news/${article.slug}/`), null, 'unpublished article page still served');
-  assert.ok(!(await page('/mens/news/'))?.includes(headline), 'unpublished article still listed');
-  pass('set to Draft: removed from the listing and its page is gone');
+  for (const team of ['mens', 'womens']) {
+    since = Date.now();
+    await go(`/admin/content/articles/${articles[team].id}`);
+    await choose('Website status', 'Draft');
+    await saveForm();
+    build = await buildAfter(since);
+    assert.equal(build.ok, true, `website build failed: ${build.reason}`);
+    assert.equal(await page(`/${team}/news/${articles[team].slug}/`), null, `unpublished ${team} article page still served`);
+    assert.ok(!(await page(`/${team}/news/`))?.includes(articles[team].headline), `unpublished ${team} article still listed`);
+  }
+  pass('both set back to Draft: removed from the listings and their pages are gone');
 
-  const future = await admin.post('/items/articles', { status: 'published', title: `Test future article ${tag}`, summary: 'Temporary.', body: 'Temporary future-dated test.', published_at: new Date(Date.now() + 7 * 864e5).toISOString() });
+  const future = await admin.post('/items/articles', { status: 'published', team: teams.mens.id, title: `Test future article ${tag}`, summary: 'Temporary.', body: 'Temporary future-dated test.', published_at: new Date(Date.now() + 7 * 864e5).toISOString() });
   created.articles.push(future.id);
   since = Date.now();
   build = await buildAfter(since);
@@ -300,9 +317,55 @@ try {
   card = imgFor(await page('/womens/team/'), name);
   const secondSrc = (card?.[1]?.startsWith('/') ? card[1] : card?.[2]) ?? '';
   const secondImage = sha(Buffer.from(await (await fetch(SITE + secondSrc)).arrayBuffer()));
+  assert.notEqual(secondSrc, firstSrc, 'the replaced photo kept the same URL, so caches could keep the old one');
   assert.notEqual(secondImage, firstImage, 'the website still serves the old photo');
   assert.ok((await admin.get('/files' + q({ filter: { id: { _eq: created.files[0] } }, fields: 'id' }))).length, 'the first original was deleted');
   pass('photo replaced in the player form: the new image is served; the earlier original is kept in the library');
+
+  // ---- 3b. Men's player with a photo uploaded while creating them, then an edit -------------------
+  step("New men's player with a photo uploaded during creation, then edited");
+  const menName = `Test Men Player ${tag}`;
+  since = Date.now();
+  await go(`/admin/content/teams/${teams.mens.id}`);
+  await helpers();
+  assert.ok(await evaluate(`__clickIn('Squad', 'button:has([data-icon="add"])')`), "no + on the men's squad list");
+  await sleep(2500);
+  await helpers();
+  assert.ok(await evaluate(`__clickIn('Player or staff member', 'button:has([data-icon="add"]), [data-icon="add"]')`), 'no + to create a new profile');
+  await sleep(2500);
+  await setText('Display name', menName);
+  await choose('Website status', 'Published');
+  await upload('Profile photograph', pictures[0]);
+  await shot('men-player-new-with-photo');
+  await saveForm(); // profile drawer
+  await choose('Position', 'Defender');
+  await saveForm(); // allocation drawer
+  await saveForm(); // team
+  const [menPerson] = await admin.get('/items/people' + q({ filter: { display_name: { _eq: menName } }, fields: 'id,slug,status,photo' }));
+  assert.ok(menPerson, `the men's player was not saved: ${await errorText()}`);
+  created.people.push(menPerson.id);
+  if (menPerson.photo) created.files.push(menPerson.photo);
+  const [menAllocation] = await admin.get('/items/squad_memberships' + q({ filter: { person: { _eq: menPerson.id } }, fields: 'id,team' }));
+  if (menAllocation) created.allocations.push(menAllocation.id);
+  assert.ok(menPerson.photo, 'the photo chosen while creating the player was not saved');
+  assert.equal(menAllocation?.team, teams.mens.id, 'team not carried');
+  build = await buildAfter(since);
+  assert.equal(build.ok, true, `website build failed: ${build.reason}`);
+  card = imgFor(await page('/mens/team/'), menName);
+  const menSrc = (card?.[1]?.startsWith('/') ? card[1] : card?.[2]) ?? '';
+  assert.ok(menSrc.includes(`/media/cms/squad/mens/web/${menPerson.slug}-`), `no photo on the men's card (${menSrc})`);
+  assert.equal((await fetch(SITE + menSrc)).status, 200);
+  assert.ok((await page(`/mens/team/${menPerson.slug}/`))?.includes(`/web/${menPerson.slug}-`), "no photo on the men's profile");
+  pass("men's player created from the squad list with a photo uploaded in the same step: card and profile show it");
+
+  since = Date.now();
+  await go(`/admin/content/people/${menPerson.id}`);
+  await setText('Biography', `Temporary test biography ${tag}.`);
+  await saveForm();
+  build = await buildAfter(since);
+  assert.equal(build.ok, true, `website build failed: ${build.reason}`);
+  assert.ok((await page(`/mens/team/${menPerson.slug}/`))?.includes(`Temporary test biography ${tag}`), 'biography edit not on the profile');
+  pass('player information edited in the form (biography) and shown on the profile');
 
   // ---- 4. Drafts and permissions ----------------------------------------------------------------
   step('Drafts and permissions');
