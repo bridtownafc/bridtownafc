@@ -56,7 +56,7 @@ const [teams, memberships, articles, packages, sponsors, settings, fixtures, tab
   api.get('/items/articles' + q({
     ...all,
     filter: { _and: [published, { _or: [{ published_at: { _null: true } }, { published_at: { _lte: now } }] }] },
-    fields: 'title,slug,category,summary,body,link,published_at,date_created,team.key,hero_image_alt,' +
+    fields: 'sort,title,slug,category,summary,body,link,published_at,date_created,team.key,hero_image_alt,' +
       'hero_image.id,hero_image.type,hero_image.filename_download,hero_image.modified_on',
     sort: 'sort,-published_at',
   })),
@@ -179,6 +179,12 @@ for (const team of teams) {
     news: [],
   };
 }
+
+// Newest first: by publish date, or creation date when none is set. The hidden manual order
+// only breaks ties; sorting by it first put every new article (which has none) last, so new
+// news never reached the homepage's three latest stories.
+const articleDate = (a) => Date.parse(a.published_at ?? a.date_created ?? '') || 0;
+articles.sort((x, y) => articleDate(y) - articleDate(x) || (x.sort ?? Infinity) - (y.sort ?? Infinity));
 
 // Articles: a story with a body gets its own page. Images are processed once per article.
 for (const a of articles) {
