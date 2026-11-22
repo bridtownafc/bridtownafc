@@ -269,8 +269,10 @@ try {
   assert.ok(await evaluate(`__clickIn('Squad', 'button:has([data-icon="add"])')`), 'no + on the squad list');
   await sleep(2500);
   await helpers();
-  assert.ok(await evaluate(`__clickIn('Player or staff member', 'button:has([data-icon="add"]), [data-icon="add"]')`), 'no + to create a new profile');
+  assert.ok(await evaluate(`__clickIn('Player or staff member', '.v-icon.add.clickable, .v-icon.add')`), 'no + to create a new profile');
   await sleep(2500);
+  await helpers();
+  if (!(await evaluate("!!__field('Display name')"))) { await dumpField('Player or staff member'); assert.fail('the + did not open a new profile form'); }
   await setText('Display name', name);
   await choose('Website status', 'Published');
   await shot('player-new-profile');
@@ -347,8 +349,10 @@ try {
   assert.ok(await evaluate(`__clickIn('Squad', 'button:has([data-icon="add"])')`), "no + on the men's squad list");
   await sleep(2500);
   await helpers();
-  assert.ok(await evaluate(`__clickIn('Player or staff member', 'button:has([data-icon="add"]), [data-icon="add"]')`), 'no + to create a new profile');
+  assert.ok(await evaluate(`__clickIn('Player or staff member', '.v-icon.add.clickable, .v-icon.add')`), 'no + to create a new profile');
   await sleep(2500);
+  await helpers();
+  if (!(await evaluate("!!__field('Display name')"))) { await dumpField('Player or staff member'); assert.fail('the + did not open a new profile form'); }
   await setText('Display name', menName);
   await choose('Website status', 'Published');
   await upload('Profile photograph', pictures[0]);
