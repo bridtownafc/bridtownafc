@@ -120,7 +120,8 @@ const HELPERS = `
   };
   // Clicks inside the field's input area (never its label menu), trying each selector in turn.
   window.__clickIn = (label, selector) => { const f = __field(label); if (!f) return false; const root = f.querySelector('.interface') || f; for (const sel of selector.split(/,\s*/)) { const el = [...root.querySelectorAll(sel)].find((e) => e.offsetParent || e.getClientRects().length); if (el) { el.scrollIntoView({ block: 'center' }); el.click(); return true; } } return false; };
-  window.__menuPick = (text) => { const item = [...document.querySelectorAll('.v-menu-content .v-list-item, .v-list-item')].filter((e) => e.offsetParent).find((e) => e.textContent.trim().startsWith(text)); if (!item) return false; item.click(); return true; };
+  // Only options in an open dropdown menu: never the left-hand navigation (which has, e.g., a "Published profiles" bookmark).
+  window.__menuPick = (text) => { const item = [...document.querySelectorAll('.v-menu-content .v-list-item')].filter((e) => e.offsetParent || e.getClientRects().length).find((e) => e.textContent.trim().startsWith(text)); if (!item) return false; item.click(); return true; };
   window.__headerSave = () => { const s = __scope(); const root = s === document ? document.querySelector('header, .header-bar') : s; const b = [...root.querySelectorAll('button')].filter((e) => e.offsetParent && !e.disabled).find((e) => /^(save|publish)$/i.test(e.textContent.trim()) || e.querySelector('[data-icon="check"]')); if (!b) return false; b.click(); return true; };
 `;
 async function helpers() { await evaluate(`(() => { ${HELPERS}; return true; })()`); }
