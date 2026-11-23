@@ -9,7 +9,7 @@ const {
 
 const SHOTS = process.env.SHOTS_DIR || path.join(__dirname, 'shots2');
 const missingShots = [];
-const GUIDE_DATE = '17 November 2026';
+const GUIDE_DATE = '23 November 2026';
 const OUT = process.argv[2] || path.join(__dirname, 'Brid_Town_Website_Admin_Guide.docx');
 
 const RED = 'A51C30';

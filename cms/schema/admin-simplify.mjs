@@ -229,6 +229,10 @@ export const LAYOUT = {
     ['internal_notes', 'group_staff', { translations: label('Staff notes'), note: 'Who is dealing with it and what was agreed. Never shown to the sender.' }],
   ],
   teams: [
+    // Keep the squad first and the closed Advanced group last.
+    ['key', null, {}],
+    ['name', null, {}],
+    ['group_squad', null, {}],
     ['group_advanced', null, {}],
     ...['fulltime_table_code', 'fulltime_fixtures_results_code', 'fulltime_fixtures_code', 'fulltime_results_code'].map((field) => [field, 'group_advanced', {}]),
   ],

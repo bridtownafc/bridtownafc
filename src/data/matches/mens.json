@@ -11,8 +11,8 @@
   },
   "sync": {
     "status": "ok",
-    "lastAttemptAt": "2026-11-22T17:01:23.280Z",
-    "lastSuccessAt": "2026-11-22T17:01:23.280Z",
+    "lastAttemptAt": "2026-11-22T23:01:24.502Z",
+    "lastSuccessAt": "2026-11-22T23:01:24.502Z",
     "lastError": null,
     "consecutiveFailures": 0
   },
@@ -1114,7 +1114,7 @@
     "competition": "Northern Premier League East Division",
     "season": "2026/27",
     "effectiveAt": null,
-    "retrievedAt": "2026-11-22T17:01:23.280Z",
+    "retrievedAt": "2026-11-22T23:01:24.502Z",
     "sourceUrl": "https://www.thenpl.co.uk/tables/east",
     "automatic": true,
     "sourceName": "Football Web Pages",
